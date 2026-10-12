@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vercel Blob Uploader</title>
+    <style>
+        body { padding: 20px; font-family: sans-serif; background: #111; color: #eee; }
+        input, button { padding: 12px; border-radius: 6px; border: none; margin: 8px 0; width: 100%; box-sizing: border-box; }
+        button { background: #057c94; color: #fff; font-weight: bold; cursor: pointer; }
+        button:disabled { opacity: 0.6; }
+        #result { margin-top: 20px; }
+        #result a { color: #22d3ee; word-break: break-all; }
+        
+        /* Styles for the storage list */
+        #list-container { margin-top: 30px; border-top: 1px solid #333; padding-top: 20px; }
+        .file-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #222; font-size: 12px; }
+        .file-link { color: #22d3ee; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .file-meta { color: #888; text-align: right; }
+    </style>
+</head>
+<body>
+    <h2>Upload a File</h2>
+    
+    <!-- NEW: Folder input -->
+    <input type="text" id="folderInput" placeholder="Folder (e.g. images/users)" style="background:#222; color:#fff; border:1px solid #444; font-size:12px;" />
+
+    <input type="file" id="fileInput" />
+    <button id="uploadBtn">Upload File</button>
+
+    <div id="result"></div>
+
+    <hr style="border-color: #333; margin: 20px 0;">
+
+    <h2>Stored Files</h2>
+    <button id="listBtn">Refresh Storage List</button>
+    <div id="list-container"></div>
+
+    <script>
+    // --- UPLOAD LOGIC ---
+    document.getElementById('uploadBtn').addEventListener('click', async function() {
+        const fileInput = document.getElementById('fileInput');
+        const file = fileInput.files[0];
+        if (!file) { alert("Please select a file first."); return; }
+
+        const folderInput = document.getElementById('folderInput');
+        const folder = folderInput.value.trim();
+
+        const btn = this;
+        btn.textContent = "Uploading..."; btn.disabled = true;
+
+        try {
+            const query = new URLSearchParams({ filename: file.name, folder: folder });
+            const response = await fetch(`/api/upload?${query.toString()}`, { method: 'POST', body: file });
+            
+            if (!response.ok) { const err = await response.json(); throw new Error(err.error || 'Upload failed'); }
+            
+            const data = await response.json();
+            document.getElementById('result').innerHTML = `
+                <p style="color: #4ade80;">✅ Upload successful!</p>
+                <a href="/api/view?pathname=${data.pathname}" target="_blank">🔗 View / Download file</a>
+            `;
+        } catch (error) {
+            alert("Error: " + error.message);
+        } finally {
+            btn.textContent = "Upload File"; btn.disabled = false;
+        }
+    });
+
+    // --- LIST LOGIC ---
+    document.getElementById('listBtn').addEventListener('click', async function() {
+        const container = document.getElementById('list-container');
+        const btn = this;
+        btn.textContent = "Loading..."; btn.disabled = true;
+        container.innerHTML = "";
+
+        try {
+            const response = await fetch('/api/list');
+            if (!response.ok) { const err = await response.json(); throw new Error(err.error || 'Failed to fetch list'); }
+            
+            const data = await response.json();
+            if (data.blobs.length === 0) {
+                container.innerHTML = "<p style='color: #888; text-align: center;'>No files uploaded yet.</p>";
+                return;
+            }
+
+            let html = "";
+            data.blobs.forEach(f => {
+                html += `
+                    <div class="file-item">
+                        <span class="file-link"><a href="${f.url}" target="_blank">${f.pathname}</a></span>
+                        <div>
+                            <span class="file-meta">${(f.size / 1024).toFixed(1)} KB</span>
+                            <button onclick="deleteFile('${f.pathname}')" style="margin-left:8px; padding:2px 8px; background:#f87171; color:white; border:none; border-radius:4px; font-size:10px; cursor:pointer;">Delete</button>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        } catch (error) {
+            container.innerHTML = `<p style="color: #f87171;">Error: ${error.message}</p>`;
+        } finally {
+            btn.textContent = "Refresh Storage List"; btn.disabled = false;
+        }
+    });
+
+    // --- DELETE LOGIC ---
+    window.deleteFile = async function(pathname) {
+        if (!confirm("Are you sure you want to delete this file?")) return;
+
+        try {
+            const response = await fetch(`/api/delete?pathname=${encodeURIComponent(pathname)}`, {
+                method: 'DELETE'
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.error || 'Delete failed');
+            }
+
+            // Refresh the list automatically after a successful delete
+            document.getElementById('listBtn').click();
+        } catch (error) {
+            alert("Error deleting file: " + error.message);
+        }
+    };
+</script>
+</body>
+</html>

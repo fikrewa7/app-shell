@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full overflow-hidden">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>JafApps · App Shell Hub</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+ <script>
+  tailwind.config = { darkMode: 'class' };
+</script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Caveat:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+*::-webkit-scrollbar {
+width: 0;
+height: 0;
+background: transparent;
+}
+* {
+scrollbar-width: none;
+-ms-overflow-style: none;
+}
+.clock-colon {
+animation: colon-blink 1s step-start infinite;
+}
+@keyframes colon-blink {
+  50% {
+    opacity: 0;
+  }
+}
+.toc-link {
+transition: all 0.2s;
+cursor: pointer;
+}
+.toc-link.active {
+background: rgba(6, 182, 212, 0.2);
+border-left: 3px solid #06b6d4; }
+.toc-link:hover {
+background: rgba(6, 182, 212, 0.1);
+}
+.spinner {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid rgba(6, 182, 212, 0.2);
+  border-top-color: #06b6d4;
+  animation: spinner-spin 0.7s linear infinite;
+}
+
+@keyframes spinner-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 2s;
+  }
+}
+</style>
+</head>
+
+<body class="h-full overflow-hidden flex flex-col bg-[#0d1a1f] text-[#e5e7eb] antialiased">
+
+<header class="flex-shrink-0 h-9 bg-[#0d1a1f] text-white shadow-[0_2px_10px_rgba(1,74,96,0.5)] flex items-center justify-between px-2 z-20 border-b border-[#1a3a42] min-w-0">
+<div class="flex-1 flex items-center gap-1.5">
+<i id="appIcon" class="fa-solid fa-layer-group text-[16px] text-cyan-400"></i>
+<span class="font-['Poppins',sans-serif] font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-white to-cyan-200 tracking-wide drop-shadow-[0_0_8px_rgba(6,182,212,0.5)] text-[15px]">jafApps</span>
+<span id="current-app-title" class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-white to-cyan-200 tracking-wide drop-shadow-[0_0_8px_rgba(6,182,212,0.5)] text-[10px] mt-1.5 flex-1 truncate">App Shell Hub</span>
+</div>
+
+<div class="flex items-center gap-4">
+<button id="sidebar-toggle" title="Toggle sidebar" class="text-cyan-400 text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-2">
+  <i id="sidebar-toggle-icon" class="fa-solid fa-chevron-left text-[14px]"></i>
+  <span class="hidden md:inline">Sidebar</span>
+</button>
+<button id="reload-btn" title="Reload app" class="text-cyan-400 text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-2">
+<i class="fa-solid fa-rotate-right text-[14px]"></i>
+<span class="hidden md:inline">Reload</span>
+</button>
+<button id="theme-toggle" title="Toggle theme" class="bg-cyan-800/50 hover:bg-cyan-700 text-white px-1.5 py-0.5 rounded border border-cyan-600/30 transition-colors text-[10px]">
+<i class="fas fa-moon dark:hidden text-[10px]"></i>
+<i class="fas fa-sun hidden dark:inline text-[10px]"></i>
+</button>
+</div>
+</header>
+
+<main id="app-main" class="flex-1 overflow-hidden flex flex-row relative">
+<section id="app-content" class="flex-1 overflow-hidden flex flex-col p-1 gap-1 relative bg-transparent min-h-0">
+<div id="tab-container" class="flex-1 overflow-hidden min-h-0 relative">
+<div class="bg-[#1a2e36] rounded-lg p-1 w-full h-full shadow-xl border border-cyan-400/30 overflow-hidden flex flex-col">
+<div id="tab-pane-docs" class="h-full overflow-hidden" data-docs-loaded="true">
+<div class="h-full flex overflow-hidden">
+
+<aside class="w-12 bg-[#1a2e36] border-r border-cyan-400/20 overflow-hidden flex flex-col flex-shrink-0 px-0.5 py-2 z-10">
+<nav class="w-full flex flex-col gap-1 text-sm flex-1">
+<button type="button" data-src="apps/media-blob-db-two/index.html" data-title="Media DB" title="Media DB Two" class="toc-link pt-1 rounded text-cyan-300 hover:text-cyan-200 flex flex-col items-center gap-0.5 w-full active">
+<i class="fa-solid fa-video text-[14px]"></i>
+<span class="text-[9px] truncate w-full text-center px-0.5">Media DB 2</span>
+</button>
+<button type="button" data-src="apps/image-blob-db/index.html" data-title="Image DB" title="Image DB" class="toc-link pt-1 rounded text-cyan-300 hover:text-cyan-200 flex flex-col items-center gap-0.5 w-full">
+  <i class="fa-solid fa-image text-[14px]"></i>
+  <span class="text-[9px] truncate w-full text-center px-0.5">Image DB</span>
+</button>
+
+<button type="button" data-src="apps/media-blob-db/index.html" data-title="Media DB" title="Media DB" class="toc-link pt-1 rounded text-cyan-300 hover:text-cyan-200 flex flex-col items-center gap-0.5 w-full">
+  <i class="fa-solid fa-photo-film text-[14px]"></i>
+  <span class="text-[9px] truncate w-full text-center px-0.5">Media DB</span>
+</button>
+
+<button type="button" data-src="apps/blob-json-db/index.html" data-title="JSON DB" title="JSON DB" class="toc-link pt-1 rounded text-cyan-300 hover:text-cyan-200 flex flex-col items-center gap-0.5 w-full">
+  <i class="fa-solid fa-database text-[14px]"></i>
+  <span class="text-[9px] truncate w-full text-center px-0.5">JSON DB</span>
+</button>
+
+<button type="button" data-src="apps/blob-img-db/index.html" data-title="Img DB" title="Img DB" class="toc-link pt-1 rounded text-cyan-300 hover:text-cyan-200 flex flex-col items-center gap-0.5 w-full">
+  <i class="fa-solid fa-images text-[14px]"></i>
+  <span class="text-[9px] truncate w-full text-center px-0.5">Img DB</span>
+</button>
+
+<button type="button" data-src="apps/tiktokTools/index.html" data-title="TikTok" title="TikTok" class="toc-link pt-1 rounded text-cyan-300 hover:text-cyan-200 flex flex-col items-center gap-0.5 w-full">
+  <i class="fa-brands fa-tiktok text-[14px]"></i>
+  <span class="text-[9px] truncate w-full text-center px-0.5">TikTok</span>
+</button>
+
+<button type="button" data-src="apps/follow-back-assistant/index.html" data-title="Follow Back" title="Follow Back" class="toc-link pt-1 rounded text-cyan-300 hover:text-cyan-200 flex flex-col items-center gap-0.5 w-full">
+  <i class="fa-solid fa-user-plus text-[14px]"></i>
+  <span class="text-[9px] truncate w-full text-center px-0.5">Follow Back</span>
+</button>
+
+<button type="button" data-src="apps/fansComparator/index.html" data-title="Fans Cmp" title="Fans Cmp" class="toc-link pt-1 rounded text-cyan-300 hover:text-cyan-200 flex flex-col items-center gap-0.5 w-full">
+  <i class="fa-solid fa-users text-[14px]"></i>
+  <span class="text-[9px] truncate w-full text-center px-0.5">Fans Cmp</span>
+</button>
+
+<button type="button" data-src="apps/followers-compare/index.html" data-title="Followers" title="Followers" class="toc-link pt-1 rounded text-cyan-300 hover:text-cyan-200 flex flex-col items-center gap-0.5 w-full">
+  <i class="fa-solid fa-code-compare text-[14px]"></i>
+  <span class="text-[9px] truncate w-full text-center px-0.5">Followers</span>
+</button>
+
+<button type="button" data-src="apps/blob-uploader/index.html" data-title="Uploader" title="Uploader" class="toc-link pt-1 rounded text-cyan-300 hover:text-cyan-200 flex flex-col items-center gap-0.5 w-full">
+  <i class="fa-solid fa-cloud-arrow-up text-[14px]"></i>
+  <span class="text-[9px] truncate w-full text-center px-0.5">Uploader</span>
+</button>
+
+<button type="button" data-src="apps/power-json/index.html" data-title="Power JSON" title="Power JSON" class="toc-link pt-1 rounded text-cyan-300 hover:text-cyan-200 flex flex-col items-center gap-0.5 w-full">
+  <i class="fa-solid fa-bolt text-[14px]"></i>
+  <span class="text-[9px] truncate w-full text-center px-0.5">Power JSON</span>
+</button>
+
+
+</nav>
+
+<div class="mt-auto flex flex-col gap-2 pt-1.5 border-t border-gray-200 dark:border-gray-700">
+<button id="open-external-btn" title="Open in new tab" class="toc-link pt-1 rounded text-cyan-300 hover:text-cyan-200 flex flex-col items-center gap-1 w-full">
+<i class="fa-solid fa-up-right-from-square text-[14px] md:text-[10px] md:mr-2"></i>
+<span class="text-[9px] truncate w-full text-center px-0.5">Open</span>
+</button>
+<button id="fullscreen-btn" title="Fullscreen" class="toc-link pt-1 rounded text-cyan-300 hover:text-cyan-200 flex flex-col items-center gap-1 w-full">
+<i class="fa-solid fa-expand text-[14px]"></i>
+<span class="text-[9px] truncate w-full text-center px-0.5">Full</span>
+</button>
+</div>
+</aside>
+
+<div id="docs-content-scroll" class="flex-1 overflow-hidden min-h-0 p-0 relative">
+<div class="bg-black/30 rounded-lg border-l-2 border-cyan-400 rounded p-0 h-full w-full flex items-center justify-center">
+
+<div id="preview-container" class="w-full h-full flex items-center justify-center relative shadow-[inset_0_2px_12px_rgba(1,74,96,0.6)] overflow-hidden">
+<iframe id="app-frame" src="about:blank" title="App frame" class="app-frame w-full h-full border-0 bg-[#0d1a1f]" allow="clipboard-read; clipboard-write; fullscreen; geolocation; camera; microphone" referrerpolicy="no-referrer"></iframe>
+  
+<div id="loading-overlay" class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[#0d1a1f]/80 backdrop-blur-[1px] transition-opacity duration-200 pointer-events-none opacity-0">
+ <div class="spinner"></div>
+ <span class="text-[10px] text-cyan-200/70 tracking-wide">Loading…</span>
+  </div>
+  <div id="empty-state" class="absolute inset-0 flex flex-col items-center justify-center text-center text-cyan-200/40 pointer-events-none">
+    <i class="fas fa-layer-group text-4xl mb-2 text-cyan-400/30 drop-shadow-[0_0_10px_rgba(6,182,212,0.35)]"></i>
+    <p class="text-sm font-medium tracking-wide">Pick an app from the sidebar</p>
+  </div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+
+<footer id="app-footer" class="flex-shrink-0 h-7 bg-[#0d1a1f] text-cyan-100/70 shadow-[0_-2px_10px_rgba(1,74,96,0.5)] flex items-center justify-between z-20 border-t border-[#1a3a42] px-2 hidden">
+    <div class="flex items-center gap-3">
+      <span class="flex items-center gap-1 mr-1 border-r border-cyan-800/30 pr-2">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span class="text-[8px] text-cyan-200/70 hidden sm:inline">Live</span>
+      </span>
+      <span class="hover:text-white transition-colors text-[8px]"><span class="mr-0.5 text-[8px]">Powered By:</span> JaferF.</span>
+      <a href="docs.html" class="hover:text-white transition-colors text-[8px] hidden"><i class="fa-regular fa-lock mr-0.5 text-[8px] ml-[3px]"></i> Documentation</a>
+      <span class="text-white/20 text-[8px]">© 2026</span>
+    </div>
+    <div id="footer-clock" class="font-mono text-[8px] text-cyan-200/80 tracking-wide select-none flex items-center">
+      <span id="clock-day" class="font-sans opacity-70 mr-1">Wed,</span>
+      <span id="clock-hours">02</span>
+      <span id="clock-colon" class="clock-colon">:</span>
+      <span id="clock-minutes">35</span>
+      <span id="clock-ampm" class="ml-0.5">PM</span>
+    </div>
+  </footer>
+
+<script>
+  /* ─────────────────────────────────────────────────────────────
+   Element references
+   ───────────────────────────────────────────────────────────── */
+  const sidebarToggle = document.getElementById('sidebar-toggle');
+const sidebarToggleIcon = document.getElementById('sidebar-toggle-icon');
+const sidebar = document.querySelector('aside');
+  const frame = document.getElementById('app-frame');
+  const overlay = document.getElementById('loading-overlay');
+  const emptyState = document.getElementById('empty-state');
+  const currentTitle = document.getElementById('current-app-title');
+  const reloadBtn = document.getElementById('reload-btn');
+  const openExtBtn = document.getElementById('open-external-btn');
+  const fullscreenBtn = document.getElementById('fullscreen-btn');
+  const themeToggle = document.getElementById('theme-toggle');
+  const previewBox = document.getElementById('preview-container');
+  
+  /* Nav buttons — the source of truth for navigation.
+     `data-src` and `data-title` are read directly from each button. */
+  const navs = Array.from(document.querySelectorAll('nav .toc-link'));
+  
+  let currentSrc = null;
+  
+  /* ─────────────────────────────────────────────────────────────
+     Core navigation
+     ───────────────────────────────────────────────────────────── */
+  function loadApp(btn) {
+    if (!btn || !btn.dataset.src) return;
+    
+    // Move the .active highlight
+    navs.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    
+    // Update shell chrome
+    currentSrc = btn.dataset.src;
+    currentTitle.textContent = btn.dataset.title || btn.title || '';
+    
+    // Show loading, hide empty state
+    emptyState.style.display = 'none';
+    overlay.style.opacity = '1';
+    
+    // Load the app
+    frame.src = currentSrc;
+    
+    // Sync hash for deep-linking / refresh
+    try {
+      history.replaceState({ src: currentSrc }, '', '#' + currentSrc);
+    } catch (e) { /* ignore */ }
+  }
+  
+  // Wire each button once
+  navs.forEach(btn => {
+    btn.addEventListener('click', () => loadApp(btn));
+  });
+  
+  /* ─────────────────────────────────────────────────────────────
+     Iframe load → hide overlay
+     ───────────────────────────────────────────────────────────── */
+  frame.addEventListener('load', () => {
+    overlay.style.opacity = '0';
+    if (frame.src && frame.src !== 'about:blank') {
+      emptyState.style.display = 'none';
+    }
+  });
+  
+  /* ─────────────────────────────────────────────────────────────
+     Toolbar actions
+     ───────────────────────────────────────────────────────────── */
+  reloadBtn.addEventListener('click', () => {
+    if (!currentSrc) return;
+    overlay.style.opacity = '1';
+    frame.src = 'about:blank';
+    setTimeout(() => { frame.src = currentSrc; }, 50);
+  });
+  
+  openExtBtn.addEventListener('click', () => {
+    if (currentSrc) window.open(currentSrc, '_blank', 'noopener');
+  });
+  
+  fullscreenBtn.addEventListener('click', () => {
+    if (!previewBox) return;
+    if (!document.fullscreenElement) {
+      (previewBox.requestFullscreen ||
+        previewBox.webkitRequestFullscreen ||
+        (() => {})).call(previewBox);
+    } else {
+      document.exitFullscreen();
+    }
+  });
+  
+  /* ─────────────────────────────────────────────────────────────
+     Theme handling
+     ───────────────────────────────────────────────────────────── */
+  function applyTheme(theme) {
+    const root = document.documentElement;
+    root.classList.toggle('dark', theme === 'dark');
+    root.setAttribute('data-bs-theme', theme);
+    
+    // Notify the embedded app
+    try {
+      frame.contentWindow.postMessage({ type: 'shell-theme', theme }, '*');
+    } catch (e) { /* ignore */ }
+    
+    try { localStorage.setItem('shell-theme', theme); } catch (e) { /* ignore */ }
+  }
+  
+  themeToggle.addEventListener('click', () => {
+    const isDark = document.documentElement.classList.contains('dark');
+    applyTheme(isDark ? 'light' : 'dark');
+  });
+  
+  
+  
+  (function initTheme() {
+    let saved = null;
+    try { saved = localStorage.getItem('shell-theme'); } catch (e) { /* ignore */ }
+    applyTheme(saved || 'dark');
+  })();
+  
+  /* ─────────────────────────────────────────────────────────────
+     Boot — restore last app from hash, or fall back to first button
+     ───────────────────────────────────────────────────────────── */
+  (function initFromHash() {
+    let hash = '';
+    try { hash = decodeURIComponent(location.hash.replace('#', '')); } catch (e) { /* ignore */ }
+    
+    const match = hash ? navs.find(b => b.dataset.src === hash) : null;
+    loadApp(match || navs[0]);
+  })();
+  
+  
+  /* ─────────────────────────────────────────────────────────────
+   Sidebar toggle
+   ───────────────────────────────────────────────────────────── */
+const SIDEBAR_KEY = 'shell-sidebar-hidden';
+
+function setSidebarHidden(hidden) {
+  if (!sidebar) return;
+  sidebar.classList.toggle('hidden', hidden);
+  // Point the chevron in the direction the sidebar will move
+  sidebarToggleIcon.classList.toggle('fa-chevron-left', !hidden);
+  sidebarToggleIcon.classList.toggle('fa-chevron-right', hidden);
+  try { localStorage.setItem(SIDEBAR_KEY, hidden ? '1' : '0'); } catch (e) {}
+}
+
+sidebarToggle.addEventListener('click', () => {
+  setSidebarHidden(!sidebar.classList.contains('hidden'));
+});
+
+/* Restore on boot — call this before initFromHash() so the layout
+   settles before the first app is loaded. */
+(function initSidebar() {
+  let saved = null;
+  try { saved = localStorage.getItem(SIDEBAR_KEY); } catch (e) {}
+  setSidebarHidden(saved === '1');
+})();
+  /* ─────────────────────────────────────────────────────────────
+     Messages from embedded apps
+     ───────────────────────────────────────────────────────────── */
+  window.addEventListener('message', (e) => {
+    const data = e.data;
+    if (!data || typeof data !== 'object') return;
+    
+    switch (data.type) {
+      case 'shell-load-app': {
+        // Match by src first, then by title / id as fallback
+        const target =
+          navs.find(b => b.dataset.src === data.src) ||
+          navs.find(b => b.dataset.title === data.appId) ||
+          navs.find(b => b.dataset.title === data.title);
+        if (target) loadApp(target);
+        break;
+      }
+      case 'shell-title': {
+        if (typeof data.title === 'string' && data.title.trim()) {
+          currentTitle.textContent = data.title;
+        }
+        break;
+      }
+      // Optional: allow embedded apps to trigger reload / fullscreen
+      case 'shell-reload': {
+        reloadBtn.click();
+        break;
+      }
+      case 'shell-fullscreen': {
+        fullscreenBtn.click();
+        break;
+      }
+    }
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full overflow-hidden dark" data-bs-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>App Shell Hub</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+  .logo-gradient {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    display: inline-block;
+  }
+  [data-bs-theme="dark"] .logo-gradient {
+    background: linear-gradient(135deg, #60A5FA 0%, #A78BFA 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .sidebar::-webkit-scrollbar { width: 2px; }
+  .sidebar::-webkit-scrollbar-track { background: transparent; }
+  .sidebar::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+  [data-bs-theme="dark"] .sidebar::-webkit-scrollbar-thumb { background: #4b5563; }
+
+  .nav-btn.active {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+  }
+  [data-bs-theme="dark"] .nav-btn.active {
+    background-color: rgba(37, 99, 235, 0.35);
+    color: #93c5fd;
+  }
+
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .app-frame { animation: fadeIn .25s ease; }
+
+  .spinner {
+    width: 28px; height: 28px;
+    border: 3px solid rgba(148,163,184,.35);
+    border-top-color: #60A5FA;
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+
+<body class="h-full overflow-hidden bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 flex flex-col">
+
+  <!-- ===== HEADER ===== -->
+  <header class="flex-shrink-0 h-10 px-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+    <a href="/" class="flex items-center gap-2 no-underline hover:opacity-80 transition-opacity">
+      <i class="fas fa-camera text-blue-500 dark:text-blue-400 text-base"></i>
+      <span class="logo-gradient font-black tracking-tight leading-tight whitespace-nowrap text-xs sm:text-sm flex items-center gap-1">
+        <span>App</span>
+        <span class="font-bold">Shell</span>
+        <span class="font-medium">Hub</span>
+      </span>
+    </a>
+
+    <div class="flex items-center gap-3">
+      <span id="current-app-title" class="hidden sm:inline text-[10px] text-gray-400 dark:text-gray-500 truncate max-w-[180px]"></span>
+
+      <button id="reload-btn" title="Reload app"
+        class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors text-sm">
+        <i class="fas fa-rotate-right"></i>
+      </button>
+
+      <button id="theme-toggle" title="Toggle theme"
+        class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors text-base">
+        <i class="fas fa-moon dark:hidden"></i>
+        <i class="fas fa-sun hidden dark:inline"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- ===== MAIN ===== -->
+  <main class="flex-1 min-h-0 flex flex-row">
+
+    <!-- ===== LEFT SIDEBAR ===== -->
+    <aside id="sidebar" class="sidebar w-[55px] min-w-[55px] bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col overflow-y-auto p-1.5 gap-1.5">
+
+      <!-- App buttons injected here by JS -->
+      <div id="nav-list" class="flex flex-col gap-1.5"></div>
+
+      <!-- Bottom actions -->
+      <div class="mt-auto flex flex-col gap-1 pt-1.5 border-t border-gray-200 dark:border-gray-700">
+        <button id="open-external-btn" title="Open in new tab"
+          class="bg-gray-100 dark:bg-gray-700 border-none rounded py-1 text-[9px] font-medium text-gray-700 dark:text-gray-200 flex flex-col items-center gap-0.5 w-full hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+          <i class="fas fa-up-right-from-square text-sm"></i> Open
+        </button>
+        <button id="fullscreen-btn" title="Fullscreen"
+          class="bg-gray-100 dark:bg-gray-700 border-none rounded py-1 text-[9px] font-medium text-gray-700 dark:text-gray-200 flex flex-col items-center gap-0.5 w-full hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+          <i class="fas fa-expand text-sm"></i> Full
+        </button>
+      </div>
+    </aside>
+
+    <!-- ===== IFRAME AREA ===== -->
+<div class="flex-1 min-h-0 p-2 flex items-center justify-center">
+<div id="preview-container" class="w-full h-full bg-slate-50 dark:bg-slate-800 rounded-xl border-2 border-gray-200 dark:border-gray-700 flex items-center justify-center relative shadow-inner overflow-hidden">
+<iframe id="app-frame" src="about:blank" title="App frame" class="app-frame w-full h-full border-0 bg-white dark:bg-gray-900" allow="clipboard-read; clipboard-write; fullscreen; geolocation; camera; microphone" referrerpolicy="no-referrer"></iframe>
+
+<div id="loading-overlay" class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-white/70 dark:bg-gray-900/70 backdrop-blur-[1px] transition-opacity duration-200 pointer-events-none opacity-0">
+<div class="spinner"></div>
+<span class="text-[10px] text-gray-500 dark:text-gray-400">Loading…</span>
+</div>
+<div id="empty-state" class="absolute inset-0 flex flex-col items-center justify-center text-center text-gray-400 dark:text-gray-500 pointer-events-none">
+<i class="fas fa-layer-group text-4xl mb-2"></i>
+<p class="text-sm font-medium">Pick an app from the sidebar</p>
+</div>
+</div>
+</div>
+
+  </main>
+
+<script>
+/* =========================================================
+   APP REGISTRY — your 10 apps
+   ========================================================= */
+const APP_LIST = [
+  { id: 'image-blob-db',        label: 'Image DB',   icon: 'fa-solid fa-image',              src: 'apps/image-blob-db/index.html' },
+  { id: 'media-blob-db',        label: 'Media DB',   icon: 'fa-solid fa-photo-film',         src: 'apps/media-blob-db/index.html' },
+  { id: 'blob-json-db',         label: 'JSON DB',    icon: 'fa-solid fa-database',           src: 'apps/blob-json-db/index.html' },
+  { id: 'blob-img-db',          label: 'Img DB',     icon: 'fa-solid fa-images',             src: 'apps/blob-img-db/index.html' },
+  { id: 'tiktokTools',          label: 'TikTok',     icon: 'fa-brands fa-tiktok',            src: 'apps/tiktokTools/index.html' },
+  { id: 'follow-back-assistant',label: 'Follow Back',icon: 'fa-solid fa-user-plus',          src: 'apps/follow-back-assistant/index.html' },
+  { id: 'fansComparator',       label: 'Fans Cmp',   icon: 'fa-solid fa-users',              src: 'apps/fansComparator/index.html' },
+  { id: 'followers-compare',    label: 'Followers',  icon: 'fa-solid fa-code-compare',       src: 'apps/followers-compare/index.html' },
+  { id: 'blob-uploader',        label: 'Uploader',   icon: 'fa-solid fa-cloud-arrow-up',     src: 'apps/blob-uploader/index.html' },
+  { id: 'power-json',           label: 'Power JSON', icon: 'fa-solid fa-bolt',               src: 'apps/power-json/index.html' }
+];
+
+/* =========================================================
+   EBtnLEMENTS
+   ========================================================= */
+const frame         = document.getElementById   ('app-frame');
+const navList       = document.getElementById('nav-list');
+const overlay       = document.getElementById('loading-overlay');
+const emptyState    = document.getElementById('empty-state');
+const currentTitle  = document.getElementById('current-app-title');
+const reloadBtn     = document.getElementById('reload-btn');
+const openExt = document.getElementById('open-external-btn');
+const fullscreenBtn = document.getElementById('fullscreen-btn');
+
+let currentSrc = null;
+
+/* =========================================================
+   BUILD SIDEBAR BUTTONS (styled exactly like the old Copy button)
+   ========================================================= */
+APP_LIST.forEach(app => {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.dataset.src = app.src;
+  btn.dataset.title = app.label;
+  btn.title = app.label;
+  btn.className =
+    'nav-btn bg-gray-100 dark:bg-gray-700 border-none rounded py-1 text-[9px] ' +
+    'font-medium text-gray-700 dark:text-gray-200 flex flex-col items-center gap-0.5 ' +
+    'w-full hover:bg-gray-200 dark:hover:bg-gray-600 transition';
+  btn.innerHTML = `
+    <i class="${app.icon} text-sm"></i>
+    <span class="truncate w-full text-center px-0.5">${app.label}</span>
+  `;
+  btn.addEventListener('click', () => loadApp(btn, app));
+  navList.appendChild(btn);
+});
+
+/* =========================================================
+   LOADER
+   ========================================================= */
+function loadApp(btn, app) {
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  currentSrc = app.src;
+  currentTitle.textContent = app.label;
+
+  emptyState.style.display = 'none';
+  overlay.style.opacity = '1';
+
+  frame.src = app.src;
+
+  try { history.replaceState({ app: app.id }, '', '#' + app.id); } catch (e) {}
+}
+
+/* Hide spinner once the iframe finishes loading */
+frame.addEventListener('load', () => {
+  overlay.style.opacity = '0';
+  if (frame.src && frame.src !== 'about:blank') emptyState.style.display = 'none';
+});
+
+/* =========================================================
+   HEADER / BOTTOM ACTIONS
+   ========================================================= */
+reloadBtn.addEventListener('click', () => {
+  if (!currentSrc) return;
+  overlay.style.opacity = '1';
+  frame.src = 'about:blank';
+  setTimeout(() => { frame.src = currentSrc; }, 50);
+});
+
+openExtBtn.addEventListener('click', () => {
+  if (currentSrc) window.open(currentSrc, '_blank', 'noopener');
+});
+
+fullscreenBtn.addEventListener('click', () => {
+  const el = document.getElementById('preview-container');
+  if (!document.fullscreenElement) {
+    (el.requestFullscreen || el.webkitRequestFullscreen || (() => {})).call(el);
+  } else {
+    document.exitFullscreen();
+  }
+});
+
+/* =========================================================
+   THEME TOGGLE (persisted + broadcast to iframe)
+   ========================================================= */
+const themeToggle = document.getElementById('theme-toggle');
+
+function applyTheme(theme) {
+  const root = document.documentElement;
+  if (theme === 'dark') {
+    root.classList.add('dark');
+    root.setAttribute('data-bs-theme', 'dark');
+  } else {
+    root.classList.remove('dark');
+    root.setAttribute('data-bs-theme', 'light');
+  }
+  try {
+    frame.contentWindow.postMessage({ type: 'shell-theme', theme }, '*');
+  } catch (e) {}
+  try { localStorage.setItem('shell-theme', theme); } catch (e) {}
+}
+
+themeToggle.addEventListener('click', () => {
+  const isDark = document.documentElement.classList.contains('dark');
+  applyTheme(isDark ? 'light' : 'dark');
+});
+
+(function initTheme() {
+  let saved = null;
+  try { saved = localStorage.getItem('shell-theme'); } catch (e) {}
+  applyTheme(saved || 'dark');
+})();
+
+/* =========================================================
+   DEEP LINKING — open the app from the URL hash (#tiktokTools)
+   ========================================================= */
+(function initFromHash() {
+  const hash = location.hash.replace('#', '');
+  const index = APP_LIST.findIndex(a => a.id === hash);
+  const startIndex = index >= 0 ? index : 0;
+  const btns = navList.querySelectorAll('.nav-btn');
+  if (btns[startIndex]) {
+    loadApp(btns[startIndex], APP_LIST[startIndex]);
+  }
+})();
+
+/* =========================================================
+   MESSAGING FROM APPS (optional)
+   Apps can call:  parent.postMessage({type:'shell-load-app', appId:'tiktokTools'}, '*')
+   ========================================================= */
+window.addEventListener('message', (e) => {
+  const data = e.data;
+  if (!data || typeof data !== 'object') return;
+
+  switch (data.type) {
+    case 'shell-load-app': {
+      const target = APP_LIST.find(a => a.id === data.appId);
+      const btns = navList.querySelectorAll('.nav-btn');
+      const i = APP_LIST.indexOf(target);
+      if (target && btns[i]) loadApp(btns[i], target);
+      break;
+    }
+    case 'shell-title':
+      if (typeof data.title === 'string') currentTitle.textContent = data.title;
+      break;
+  }
+});
+</script>
+</body>
+</html>

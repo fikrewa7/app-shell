@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=auto">
+<title>Follow‑Back Assistant · Full Suite</title>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- Font Awesome & Material Icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<!-- Google Fonts (same as before) -->
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fjalla+One&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@100;200;300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Smooch+Sans:wght@100..900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100..800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  /* All original styles remain unchanged – only the Settings tab HTML changes */
+  .neon-tab.active {
+    background: rgba(99, 102, 241, 0.2);
+    border-bottom: 2px solid #22d3ee;
+    box-shadow: 0 0 8px #22d3ee88, inset 0 1px 0 rgba(255,255,255,0.1);
+    color: #a5f3fc;
+  }
+  .config-tab{
+   
+  }
+  .config-tab.active {
+  background: rgba(99, 102, 241, 0.2);
+  border-bottom: 1px solid #22d3ee;
+  color: #a5f3fc;
+}
+  .shadow-3d {
+    box-shadow: 0 10px 20px -5px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05) inset, 0 0 0 1px rgba(0,0,0,0.2);
+  }
+  input[type="file"] { display: none; }
+  .custom-checkbox {
+    appearance: none;
+    width: 1rem;
+    height: 1rem;
+    background: #1e1f2c;
+    border: 1px solid #4b5563;
+    border-radius: 0.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  .custom-checkbox:checked {
+    background: #4f46e5;
+    border-color: #818cf8;
+  }
+  .custom-checkbox:checked::after {
+    content: "✓";
+    font-size: 0.7rem;
+    color: white;
+    font-weight: bold;
+  }
+  .custom-select {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+  }
+  .custom-select select {
+    appearance: none;
+    background: #1e1f2c;
+    border: 1px solid #2d2f3e;
+    border-radius: 0.5rem;
+    padding: 0.35rem 1.8rem 0.35rem 0.75rem;
+    font-size: 0.75rem;
+    color: #e2e8f0;
+    cursor: pointer;
+    outline: none;
+  }
+  .custom-select select:focus { border-color: #6366f1; box-shadow: 0 0 0 1px #6366f1; }
+  .custom-select i { position: absolute; right: 0.5rem; pointer-events: none; font-size: 0.8rem; color: #94a3b8; }
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    visibility: hidden;
+    opacity: 0;
+    transition: visibility 0s, opacity 0.2s;
+  }
+  .modal-overlay.active { visibility: visible; opacity: 1; }
+  .modal-container {
+    background: #0f1117;
+    max-width: 90vw;
+    width: 420px;
+    border-radius: 1rem;
+    border: 1px solid #2d2f3e;
+    padding: 1rem;
+  }
+  .avatar-img {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 9999px;
+    object-fit: cover;
+    background: #1e293b;
+  }
+  .user-name {
+    font-weight: 600;
+    color: #f1f5f9;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .user-handle {
+    font-size: 0.6rem;
+    opacity: 0.7;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .stats-number {
+    font-family: monospace;
+    font-size: 0.7rem;
+  }
+  .table-checkbox {
+    width: 1rem;
+    height: 1rem;
+    accent-color: #4f46e5;
+    cursor: pointer;
+  }
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+  .data-table th, .data-table td {
+    padding: 4px;
+    border-bottom: 1px solid #1e293b;
+    vertical-align: middle;
+  }
+  .data-table th {
+    position: sticky;
+    top: 0;
+    background: #0f1119;
+    z-index: 10;
+    text-align: left;
+    font-weight: 500;
+    color: #94a3b8;
+  }
+  .table-container {
+    overflow-x: auto;
+    position: relative;
+  }
+  
+  pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+    background: #0a0c12;
+  }
+  .data-table, .data-table th, .data-table td { font-size: 0.7rem; }
+  *::-webkit-scrollbar { display: none; }
+  * { scrollbar-width: none; box-sizing: border-box; }
+  .rotate-header {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    white-space: nowrap;
+    text-align: center;
+    height: 80px;
+    line-height: 1.2;
+  }
+  
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    filter: grayscale(0.2);
+    pointer-events: none;
+  }
+  .config-input {
+    background: #1e1f2c;
+    border: 1px solid #2d2f3e;
+    border-radius: 0.375rem;
+    padding: 0.25rem 0.5rem;
+    color: #e2e8f0;
+    font-size: 0.75rem;
+    width: 100%;
+  }
+  .config-label {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: #94a3b8;
+    margin-bottom: 0.25rem;
+    display: block;
+  }
+  /* Additional group styling */
+  .settings-group {
+    background: rgba(15, 17, 25, 0.6);
+    border: 1px solid #2d2f3e;
+    border-radius: 0.75rem;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .group-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #818cf8;
+    margin-bottom: 0.75rem;
+    border-left: 2px solid #6366f1;
+    padding-left: 0.5rem;
+  }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body class="bg-gradient-to-br from-slate-900 to-gray-900 text-gray-200 h-dvh flex flex-col overflow-hidden">
+
+<header class="shadow-3d bg-[#0b0e14]/90 backdrop-blur-sm border-b border-white/5 px-2 py-1 flex justify-between items-center z-10">
+  <div class="flex items-center gap-2">
+    <i class="material-icons text-indigo-400 text-[2.3rem]">group_add</i>
+    <div class="flex flex-col">
+      <h1 class="text-sm font-semibold tracking-wide bg-gradient-to-r from-indigo-300 to-cyan-300 bg-clip-text text-transparent">Follow‑Back Assistant</h1>
+      <span class="text-[0.75rem] py-0.5 rounded-full text-indigo-200">Full Suit</span>
+    </div>
+  </div>
+  <div class="flex gap-2 text-[0.65rem] text-slate-400">
+    <i class="fas fa-code-branch text-cyan-400 text-xl"></i>
+  </div>
+</header>
+
+<main class="flex-1 flex flex-col min-h-0 overflow-hidden p-2 gap-2">
+  <!-- Control panel (unchanged) -->
+  <div class="bg-[#0c0f16]/70 rounded-xl border border-white/5 p-2 shadow-lg flex flex-col">
+    <div class="flex flex-nowrap items-center gap-2 justify-between overflow-hidden w-full min-w-0">
+      <div class="overflow-hidden flex-1 custom-file-label inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium cursor-pointer bg-[#1e1f2c] border border-[#2d2f3e] text-[#cbd5e6] hover:bg-[#2d2f3e] hover:border-indigo-500" id="customFileBtn">
+        <i class="fas fa-cloud-upload-alt text-indigo-300 text-xs"></i>
+        <span id="fileNameDisplay" class="text-[0.7rem] font-mono max-w-[140px] truncate">upload json</span>
+      </div>
+      <input type="file" id="jsonFileInput" accept="application/json, .json">
+      <div class="h-5 w-px bg-slate-700"></div>
+      <div class="custom-select">
+        <select id="groupSizeSelect" disabled class="opacity-60 cursor-not-allowed">
+          <option>100</option>
+        </select>
+        <i class="fas fa-chevron-down"></i>
+      </div>
+      <label class="flex items-center gap-1.5 text-[0.7rem] cursor-pointer">
+        <input type="checkbox" id="autoExtractCheck" class="custom-checkbox">
+        <span class="text-slate-300"><i class="fas fa-sync-alt text-[0.65rem] mr-1"></i>auto</span>
+      </label>
+      <div class="h-5 w-px bg-slate-700"></div>
+<button id="extractBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white text-[0.7rem] font-medium px-3 py-1.5 rounded-lg shadow-md flex items-center gap-1">
+<i class="fas fa-user-check text-xs"></i> EXTRACT
+</button>
+<button id="fetchProfilesBtn" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[0.7rem] font-medium px-3 py-1.5 rounded-lg shadow-md flex items-center gap-1 hidden" disabled>
+<i class="fas fa-cloud-download-alt"></i> Fetch
+</button>
+
+</div>
+<div class="mt-2 flex flex-nowrap items-center gap-2 text-[0.65rem] w-full min-w-0">
+<i class="fas fa-microchip text-emerald-400"></i>
+<div class="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden w-full">
+<div id="progressFill" class="h-full w-0 bg-gradient-to-r from-indigo-500 to-cyan-400 transition-all"></div>
+</div>
+
+</div>
+
+<div class="text-[0.6rem] text-slate-500 mt-1 flex items-center gap-2">
+<span id="progressMsg" class="font-mono text-cyan-300 w-40 truncate">ready</span>
+<!--
+<i class="fas fa-info-circle"></i>
+<span>Path: <code class="bg-black/30 px-1 rounded">Profile And Settings ➜ Follower ➜ FansList</code></span>
+-->
+</div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="flex-1 flex flex-col min-h-0 overflow-hidden bg-[#090c12]/40 rounded-xl border border-white/5">
+    <div class="flex border-b border-slate-800/80 px-1 pt-1 gap-0.5 overflow-hidden">
+      <button data-tab="tabJson" class="neon-tab active text-[0.7rem] font-medium px-3 py-1.5 rounded-t-md flex items-center gap-1"><i class="fas fa-code"></i> Extracted</button>
+      <button data-tab="tabSample" class="neon-tab text-[0.7rem] font-medium px-3 py-1.5 rounded-t-md flex items-center gap-1"><i class="fas fa-table"></i> Table</button>
+      <button data-tab="tabConfig" class="neon-tab text-[0.7rem] font-medium px-3 py-1.5 rounded-t-md flex items-center gap-1"><i class="fas fa-sliders-h"></i> Settings</button>
+      <button data-tab="tabAnalytics" class="neon-tab text-[0.7rem] font-medium px-3 py-1.5 rounded-t-md flex items-center gap-1"><i class="fas fa-chart-line"></i> Analytics</button>
+    </div>
+
+    <div class="flex-1 min-h-0 overflow-hidden p-2">
+      <!-- Tab: Extracted JSON (unchanged) -->
+      <div id="tabJson" class="tab-pane h-full overflow-hidden">
+        <div class="bg-[#0a0d14] rounded-lg border border-slate-800/70 p-1 h-full flex flex-col min-h-0">
+          <div class="flex justify-end gap-2 mb-2">
+            <button id="renderTableBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white text-[0.7rem] font-medium px-3 py-1.5 rounded-lg shadow-md flex items-center gap-1 hidden" disabled>
+              <i class="fas fa-database"></i> Render Table
+            </button>
+            <button id="fetchProfilesBt" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[0.7rem] font-medium px-3 py-1.5 rounded-lg shadow-md flex items-center gap-1 hidden" disabled>
+              <i class="fas fa-cloud-download-alt"></i> Fetch Profiles
+            </button>
+          </div>
+          <pre id="extractedJsonPre" class="p-2 text-slate-300 font-mono text-[0.7rem] flex-1 overflow-auto">-- No data yet --</pre>
+        </div>
+      </div>
+
+      <!-- Tab: Sample Table (unchanged) -->
+      <div id="tabSample" class="tab-pane h-full overflow-hidden hidden flex flex-col">
+        <div class="flex-1 bg-[#0a0d14] rounded-lg border border-slate-800/70 p-2 table-container overflow-x-auto">
+          <table class="data-table w-full">
+            <colgroup>
+              <col style="width:9%"> <col style="width:35%"> <col style="width:13%"> <col style="width:10%"> <col style="width:13%"> <col style="width:15%"> <col style="width:5%">
+            </colgroup>
+            <thead>
+              <tr>
+                <th></th><th>User</th><th><div class="rotate-header">Followers</div></th><th><div class="rotate-header">Following</div></th><th><div class="rotate-header">Likes</div></th><th><div class="rotate-header">Date</div></th><th><div class="rotate-header">Follow Back</div></th>
+              </tr>
+            </thead>
+            <tbody id="dynamicTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tab: Settings (Config) - Now with grouped sections -->
+      
+<div id="tabConfig" class="tab-pane h-full flex flex-col min-h-0 overflow-hidden hidden">
+<h2 class="text-sm font-semibold mb-1 flex items-center gap-2"><i class="fas fa-cog text-indigo-400"></i> Configuration</h2>
+
+<div class="flex border-b border-slate-800/80 px-1 pt-1 gap-2 justify-around overflow-hidden">
+<button data-ctab="tabConfigJson" class="config-tab flex-1 text-[0.7rem] font-medium px-1 py-1 rounded-t-md flex items-center justify-center gap-1 text-slate-500">
+<i class="fas fa-code-branch"></i>
+<span>Path</span>
+</button>
+<button data-ctab="tabConfigExtract" class="config-tab flex-1 text-[0.7rem] font-medium px-1 py-1 rounded-t-md flex items-center justify-center gap-1 text-slate-500 active">
+<i class="fas fa-filter"></i>
+<span>Extraction</span>
+</button>
+<button data-ctab="tabConfigApi" class="config-tab flex-1 text-[0.7rem] font-medium px-1 py-1 rounded-t-md flex items-center justify-center gap-1 text-slate-500">
+<i class="fas fa-cloud-upload-alt"></i>
+<span>API</span>
+</button>
+<button data-ctab="tabConfigUi" class="config-tab flex-1 text-[0.7rem] font-medium px-1 py-1 rounded-t-md flex items-center justify-center gap-1 text-slate-500"><i class="fas fa-palette"></i><span>UI</span></button>
+</div>
+
+<div class="flex-1 bg-[#0a0d14] rounded-lg border border-slate-800/70 p-3 h-full flex-1 min-h-0 overflow-hidden">
+
+<!-- Group 1: JSON Paths -->
+<div id="tabConfigJson" class="settings-group h-full overflow-y-auto hidden">
+            <div class="group-title"><i class="fas fa-code-branch mr-1"></i> JSON Paths</div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="config-label">Fans List Path (comma separated)</label>
+                <input type="text" id="cfg_jsonPath" class="config-input" placeholder="Profile And Settings, Follower, FansList">
+              </div>
+              <div>
+                <label class="config-label">Following List Path (comma separated)</label>
+                <input type="text" id="cfg_followingPath" class="config-input" placeholder="Profile And Settings, Following, Following">
+              </div>
+            </div>
+          </div>
+
+<!-- Group 2: Extraction Settings -->
+<div id="tabConfigExtract" class="settings-group h-full overflow-y-auto">
+<div class="group-title"><i class="fas fa-filter mr-1"></i> Extraction</div>
+<div class="grid grid-cols-3 md:grid-cols-5 gap-4">
+<div>
+<label class="config-label">Start</label>
+<input type="number" id="cfg_startIndex" class="config-input" step="1" min="0">
+</div>
+<div>
+<label class="config-label">Length</label>
+<input type="number" id="cfg_maxExtract" class="config-input" step="1" min="1">
+</div>
+<div>
+<label class="config-label">Concurrency</label>
+<input type="number" id="cfg_concurrency" class="config-input" step="1" min="1" max="20">
+</div>
+</div>
+</div>
+
+<!-- Group 3: API Settings -->
+<div id="tabConfigApi" class="settings-group h-full overflow-y-auto hidden">
+            <div class="group-title"><i class="fas fa-cloud-upload-alt mr-1"></i> API & Fetch</div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="config-label">API Base URL</label>
+                <input type="text" id="cfg_apiBase" class="config-input">
+              </div>
+              <div>
+  <label class="config-label">API User Path</label>
+  <input type="text" id="cfg_userPath" class="config-input" placeholder="/api/followback">
+</div>
+              <div>
+                <label class="config-label">API Key Storage Key</label>
+                <input type="text" id="cfg_apiKeyStorageKey" class="config-input">
+              </div>
+              <div>
+                <label class="config-label">API Key Header Name</label>
+                <input type="text" id="cfg_apiKeyHeader" class="config-input">
+              </div>
+              <div>
+                <label class="config-label">Auth Header Name</label>
+                <input type="text" id="cfg_authHeader" class="config-input">
+              </div>
+
+            </div>
+          </div>
+
+<!-- Group 4: UI & Display Settings -->
+<div id="tabConfigUi" class="settings-group h-full overflow-y-auto hidden">
+            <div class="group-title"><i class="fas fa-palette mr-1"></i> UI & Display</div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+  <label class="config-label">Your TikTok Username (without @)</label>
+  <input type="text" id="cfg_ownUsername" class="config-input" placeholder="yourusername">
+</div>
+              <div>
+                <label class="config-label">Default Avatar URL</label>
+                <input type="text" id="cfg_defaultAvatar" class="config-input">
+              </div>
+              <div>
+                <label class="config-label">Number Format Thresholds</label>
+                <div class="flex gap-2">
+                  <input type="number" id="cfg_millionThreshold" class="config-input w-1/2" placeholder="Million (e.g. 1000000)">
+                  <input type="number" id="cfg_thousandThreshold" class="config-input w-1/2" placeholder="Thousand (e.g. 1000)">
+                </div>
+              </div>
+              <div>
+                <label class="config-label">Date Locale</label>
+                <input type="text" id="cfg_dateLocale" class="config-input" placeholder="en-US">
+              </div>
+              <div>
+                <label class="config-label">Date Format Options (JSON)</label>
+                <input type="text" id="cfg_dateFormat" class="config-input" placeholder='{"year":"numeric","month":"short"}'>
+              </div>
+              <div>
+                <label class="config-label">Min Followers to Filter (≥ value)</label>
+                <input type="number" id="cfg_minFollowers" class="config-input" step="1000" min="0">
+              </div>
+            </div>
+          </div>
+
+</div>
+<!-- Save & Reset buttons (unchanged) -->
+<div class="flex gap-2 mt-4">
+<button id="saveConfigBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white text-[0.7rem] font-medium px-3 py-1.5 rounded-lg shadow-md">Save Settings</button>
+<button id="resetConfigBtn" class="bg-slate-700 hover:bg-slate-600 text-white text-[0.7rem] font-medium px-3 py-1.5 rounded-lg shadow-md">Reset to Defaults</button>
+</div>
+<div class="text-xs text-slate-400 mt-3 border-t border-slate-700 pt-2">
+<i class="fas fa-info-circle"></i> Changes saved to localStorage. Re‑extract for path changes.
+</div>
+
+</div>
+
+<!-- Tab: Analytics -->
+<div id="tabAnalytics" class="tab-pane h-full overflow-hidden hidden">
+  <div class="bg-[#0a0d14] rounded-lg border border-slate-800/70 p-3 h-full overflow-y-auto">
+    <div id="analyticsCards"></div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+      <div class="bg-slate-800/30 p-2 rounded-lg"><canvas id="chartDist" height="200"></canvas></div>
+      <div class="bg-slate-800/30 p-2 rounded-lg"><canvas id="chartMutual" height="200"></canvas></div>
+    </div>
+    <div class="mt-4">
+      <h3 class="text-sm font-semibold mb-2">🏆 Best Candidates to Follow Back</h3>
+      <div class="overflow-x-auto">
+        <table class="data-table w-full text-xs">
+          <thead><tr><th>Avatar</th><th>Username</th><th>Followers</th><th>Follow</th></tr></thead>
+          <tbody id="bestCandidatesBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="mt-4">
+      <h3 class="text-sm font-semibold mb-2">⚠️ Suspicious Accounts (High follow, low followers)</h3>
+      <div class="overflow-x-auto">
+        <table class="data-table w-full text-xs">
+          <thead><tr><th>Avatar</th><th>Username</th><th>Followers</th><th>Following</th><th>Unfollow</th></tr></thead>
+          <tbody id="suspiciousBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+    </div>
+  </div>
+</main>
+
+<footer class="bg-[#0b0e14]/90 backdrop-blur-sm py-1.5 px-3 flex justify-between items-center text-[0.6rem] text-slate-400 border-t border-white/5">
+  <div class="flex gap-2 items-center"><i class="fas fa-cogs text-cyan-400 text-xs"></i><span>Web Worker · configurable</span></div>
+  <div class="text-indigo-300"><i class="fas fa-code-branch mr-1"></i> Follow‑back detection enabled</div>
+</footer>
+
+<div id="customDialog" class="modal-overlay">
+  <div class="modal-container">
+    <div class="flex justify-between items-center border-b border-slate-700 pb-2 mb-2">
+      <span class="flex items-center gap-2 text-sm font-semibold"><i class="fas fa-exclamation-triangle text-amber-400"></i> Notification</span>
+      <button id="closeDialogBtn" class="text-slate-400 hover:text-white"><i class="fas fa-times"></i></button>
+    </div>
+    <div id="dialogMessage" class="text-xs text-slate-300 mb-4">message</div>
+    <button id="dialogOkBtn" class="bg-indigo-600 w-full py-1.5 rounded-md text-xs font-medium hover:bg-indigo-500">OK</button>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/helper.js"></script>
+<script src="js/render.js"></script>
+<script src="js/extractor.js"></script>
+<script src="js/fetcher.js"></script>
+<script src="js/dom.js"></script>
+<script src="js/ui/ui-core.js"></script>
+<script src="js/ui/ui-extract.js"></script>
+<script src="js/ui/ui-fetch.js"></script>
+<script src="js/ui/ui-settings.js"></script>
+<script src="js/ui/ui-main.js"></script>
+<script src="js/ui/ui-analytics.js"></script>
+</body>
+</html>

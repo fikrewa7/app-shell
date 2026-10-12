@@ -1,0 +1,8 @@
+{
+  "name": "blob-uploader",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@vercel/blob": "^0.24.0"
+  }
+}

@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full overflow-hidden bg-white dark:bg-gray-900 dark" id="html-root">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
+  <title>Fans Comparator</title>
+  <!-- Tailwind CDN for layout utilities only -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          screens: { 'xs': '480px' },
+        },
+      },
+    };
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    /* Structural / layout only – absolutely no colors */
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    .scroll-thin::-webkit-scrollbar { width: 3px; height: 3px; }
+    .scroll-thin::-webkit-scrollbar-track { border-radius: 6px; background: transparent; }
+    .scroll-thin::-webkit-scrollbar-thumb { border-radius: 6px; background: #cbd5e1; }
+    .dark .scroll-thin::-webkit-scrollbar-thumb { background: #475569; }
+    .scroll-thin { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
+    .dark .scroll-thin { scrollbar-color: #475569 transparent; }
+    @keyframes slideIn { from { opacity:0; transform:translateY(-16px) scale(0.96); } to { opacity:1; transform:translateY(0); } }
+    @keyframes dialogIn { from { opacity:0; transform:scale(0.94) translateY(10px); } to { opacity:1; transform:scale(1) translateY(0); } }
+    .toast { animation: slideIn 0.25s ease; cursor: pointer; }
+    .toast.removing { opacity:0; transform:translateX(40px); transition:all 0.25s ease; }
+    .sunken {
+      border-radius: 0.375rem;
+      padding: 0.25rem;
+      line-height: 1.4;
+      margin: 0;
+    }
+  </style>
+</head>
+<body class="h-full overflow-hidden bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+  <div id="toast-container" class="fixed top-3 right-3 left-3 z-[9999] flex flex-col items-end gap-1.5 pointer-events-none"></div>
+
+  <!-- Dialog -->
+  <div id="dialog-overlay" class="fixed inset-0 z-[9998] hidden items-center justify-center p-4 bg-black/50 dark:bg-black/70 backdrop-blur-sm">
+    <div class="max-w-[500px] w-full max-h-[80vh] rounded-2xl p-5 shadow-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 animate-[dialogIn_0.2s_ease] overflow-y-auto scroll-thin">
+      <div id="dialog-content" class="text-sm leading-relaxed text-gray-900 dark:text-gray-100"></div>
+      <div class="flex justify-end mt-3 gap-2">
+        <button id="dialog-close-btn" class="rounded-lg px-4 py-1.5 text-sm transition flex items-center gap-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600">
+          <i class="fa-regular fa-circle-xmark"></i><span>Close</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex flex-col h-full w-full overflow-hidden bg-white dark:bg-gray-900">
+    <!-- Header -->
+    <header class="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-3 py-1.5 flex items-center justify-between bg-white dark:bg-gray-900">
+      <div class="flex items-center gap-1.5 min-w-0">
+        <i class="fa-solid fa-users-rays text-sm text-gray-600 dark:text-gray-400"></i>
+        <span class="font-semibold text-xs truncate text-gray-800 dark:text-gray-200" style="font-size:0.75rem;">Fans<span class="text-gray-500 dark:text-gray-400">Compare</span></span>
+        <span class="text-[0.5rem] px-1.5 py-0.5 rounded-full border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hidden sm:inline">v1</span>
+      </div>
+      <div class="flex items-center gap-1.5 flex-shrink-0">
+        <button id="theme-toggle" class="text-sm p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 transition" aria-label="Toggle theme">
+          <i class="fa-regular fa-sun"></i>
+        </button>
+        <span class="flex items-center gap-1 text-[0.55rem] text-gray-500 dark:text-gray-400">
+          <i class="fa-regular fa-circle text-[8px] text-gray-400 dark:text-gray-500" id="status-dot"></i>
+          <span id="status-text" class="hidden sm:inline">ready</span>
+        </span>
+      </div>
+    </header>
+
+    <main class="flex-1 min-h-0 flex flex-col overflow-hidden px-2 py-1.5 bg-white dark:bg-gray-900">
+      <!-- Tab bar -->
+      <div class="flex-shrink-0 flex items-center gap-0 pb-2 mb-2 relative z-10 border border-gray-200 dark:border-gray-700 rounded-xl mx-1 px-1 shadow-sm bg-white dark:bg-gray-900">
+        <button class="tab-btn text-[1rem] px-3 py-2 border-b-2 transition font-medium uppercase tracking-wide flex items-center gap-1.5 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" data-tab="tab-files">
+          <i class="fa-regular fa-folder-open"></i> <span class="hidden xs:inline">Files</span>
+        </button>
+        <button class="tab-btn text-[1rem] px-3 py-2 border-b-2 transition font-medium uppercase tracking-wide flex items-center gap-1.5 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" data-tab="tab-results">
+          <i class="fa-regular fa-chart-bar"></i> <span class="hidden xs:inline">Results</span>
+        </button>
+        <button class="tab-btn text-[1rem] px-3 py-2 border-b-2 transition font-medium uppercase tracking-wide flex items-center gap-1.5 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" data-tab="tab-stats">
+          <i class="fa-regular fa-table"></i> <span class="hidden xs:inline">Stats</span>
+        </button>
+        <div class="flex-1"></div>
+        <button id="clear-all-btn" class="rounded-lg px-2 py-1 text-[0.95rem] transition text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-800" aria-label="Clear all">
+          <i class="fa-regular fa-eraser"></i>
+        </button>
+      </div>
+
+      <div class="flex-1 min-h-0 overflow-hidden">
+        <!-- Tab: Files -->
+<div id="tab-files" class="h-full flex flex-col gap-1.5 overflow-y-auto scroll-thin pb-1">
+
+
+
+          <!-- Old file block -->
+<div class="border border-gray-200 dark:border-gray-700 rounded-xl p-1.5 bg-white dark:bg-gray-900">
+<div class="flex items-center justify-between mb-0.5">
+<label class="text-[0.55rem] flex items-center gap-1 text-gray-600 dark:text-gray-400"><i class="fa-regular fa-file-lines text-[10px]"></i> Old</label>
+              <span id="old-file-status" class="text-[0.5rem] text-gray-400 dark:text-gray-500">none</span>
+            </div>
+<div class="flex items-center gap-3">
+<div class="flex-1 drop-zone border border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-2 text-center cursor-pointer transition hover:border-gray-400 dark:hover:border-gray-500 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800" id="drop-old">
+                <input type="file" id="file-old" accept=".json" class="hidden" />
+                <div class="flex items-center justify-center gap-1 text-[0.55rem] text-gray-500 dark:text-gray-400">
+                  <i class="fa-regular fa-cloud-arrow-up text-[10px]"></i>
+                  <span id="old-file-name" class="truncate">Upload Old</span>
+                </div>
+              </div>
+              <div class="flex-1 flex items-center justify-between gap-2">
+                <button id="extract-old-btn" class="flex-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-1 text-xs transition flex items-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <i class="fa-regular fa-file-arrow-up text-[10px]"></i><span>Extract</span>
+                </button>
+                <button id="view-old-btn" class="flex-1 border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1 text-[0.6rem] transition disabled:opacity-30 disabled:pointer-events-none bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700" disabled>
+                  <i class="fa-regular fa-eye text-[10px]"></i><span>View</span>
+                </button>
+              </div>
+            </div>
+<div class="mt-2 h-0.5 w-full rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
+<div id="extract-progress-bar-old" class="h-full rounded-full w-0 transition-all duration-200 bg-blue-600 dark:bg-blue-500"></div>
+</div>
+</div>
+
+          <!-- New file block -->
+<div class="border border-gray-200 dark:border-gray-700 rounded-xl p-1.5 bg-white dark:bg-gray-900">
+<div class="flex items-center justify-between mb-0.5">
+              <label class="text-[0.55rem] flex items-center gap-1 text-gray-600 dark:text-gray-400"><i class="fa-regular fa-file-lines text-[10px]"></i> New</label>
+              <span id="new-file-status" class="text-[0.5rem] text-gray-400 dark:text-gray-500">none</span>
+            </div>
+<div class="flex items-center gap-3">
+              <div class="flex-1 drop-zone border border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-2 text-center cursor-pointer transition hover:border-gray-400 dark:hover:border-gray-500 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800" id="drop-new">
+                <input type="file" id="file-new" accept=".json" class="hidden" />
+                <div class="flex items-center justify-center gap-1 text-[0.55rem] text-gray-500 dark:text-gray-400">
+                  <i class="fa-regular fa-cloud-arrow-up text-[10px]"></i>
+                  <span id="new-file-name" class="truncate">Upload New</span>
+                </div>
+              </div>
+              <div class="flex-1 flex items-center justify-between gap-2">
+                <button id="extract-new-btn" class="flex-1 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-1 text-xs transition flex items-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <i class="fa-regular fa-file-arrow-up text-[10px]"></i><span>Extract</span>
+                </button>
+                <button id="view-new-btn" class="flex-1 border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1 text-[0.6rem] transition disabled:opacity-30 disabled:pointer-events-none bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700" disabled>
+                  <i class="fa-regular fa-eye text-[10px]"></i><span>View</span>
+                </button>
+              </div>
+            </div>
+<div class="mt-2 h-0.5 w-full rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
+<div id="extract-progress-bar-new" class="h-full rounded-full w-0 transition-all duration-200 bg-blue-600 dark:bg-blue-500"></div>
+</div>
+</div>
+
+          <!-- Action buttons -->
+          <div class="flex flex-nowrap items-center gap-1 mt-0.5">
+            <button id="extract-both-btn" class="border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-1 text-xs transition flex items-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">
+              <i class="fa-regular fa-wand-magic-sparkles text-[10px]"></i><span>Extract Both</span>
+            </button>
+            <button id="compare-btn" class="border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-1 text-xs transition flex items-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">
+              <i class="fa-regular fa-arrow-right-arrow-left text-[10px]"></i><span>Compare</span>
+            </button>
+            <span class="flex-1"></span>
+            <span id="extract-progress-text" class="text-[0.5rem] text-gray-500 dark:text-gray-400">ready</span>
+          </div>
+
+<div class="h-0.5 w-full rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
+<div id="extract-progress-bar" class="h-full rounded-full w-0 transition-all duration-200 bg-blue-600 dark:bg-blue-500"></div>
+</div>
+
+<div id="extract-summary" class="border border-gray-200 dark:border-gray-700 rounded-xl p-1.5 bg-white dark:bg-gray-800 shadow-sm">
+  <div class="flex items-center gap-1.5 text-[0.55rem] flex-wrap text-gray-700 dark:text-gray-300">
+    <span class="px-1.5 py-0.5 rounded-full border border-gray-200 dark:border-gray-600 flex items-center gap-1"><i class="fa-regular fa-file text-gray-400 dark:text-gray-500"></i> Old: <span id="ext-old-count" class="font-semibold">0</span></span>
+    <span class="px-1.5 py-0.5 rounded-full border border-gray-200 dark:border-gray-600 flex items-center gap-1"><i class="fa-regular fa-trash-can text-red-400 dark:text-red-500"></i> Removed: <span id="ext-removed-old">0</span></span>
+    <span class="px-1.5 py-0.5 rounded-full border border-gray-200 dark:border-gray-600 flex items-center gap-1"><i class="fa-regular fa-file text-gray-400 dark:text-gray-500"></i> New: <span id="ext-new-count" class="font-semibold">0</span></span>
+    <span class="px-1.5 py-0.5 rounded-full border border-gray-200 dark:border-gray-600 flex items-center gap-1"><i class="fa-regular fa-trash-can text-red-400 dark:text-red-500"></i> Removed: <span id="ext-removed-new">0</span></span>
+    <button id="copy-extract-btn" class="border rounded-lg px-1.5 py-0.5 text-[0.5rem] transition ml-auto border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300" aria-label="Copy"><i class="fa-regular fa-copy"></i></button>
+  </div>
+</div>
+
+<div id="quick-start-msg" class="text-[0.55rem] text-center py-2 px-4 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 hidden">
+Upload two JSON exports from OnlyFans to compare followers.<br>
+<button id="download-sample-btn" class="underline transition text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">Download sample.json</button>
+</div>
+
+
+</div>
+
+        <!-- Tab: Results -->
+        <div id="tab-results" class="hidden h-full flex flex-col gap-1.5 overflow-y-auto scroll-thin pb-1">
+          <div class="grid grid-cols-2 sm:grid-cols-5 gap-1">
+            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-1.5 bg-white dark:bg-gray-900">
+              <div class="text-[0.45rem] uppercase tracking-wider text-gray-500 dark:text-gray-400">Unfollowed</div>
+              <div class="text-[12px] font-semibold text-red-600 dark:text-red-400" id="r-unfollowed">0</div>
+            </div>
+            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-1.5 bg-white dark:bg-gray-900">
+              <div class="text-[0.45rem] uppercase tracking-wider text-gray-500 dark:text-gray-400">New</div>
+              <div class="text-[12px] font-semibold text-green-600 dark:text-green-400" id="r-new">0</div>
+            </div>
+            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-1.5 bg-white dark:bg-gray-900">
+              <div class="text-[0.45rem] uppercase tracking-wider text-gray-500 dark:text-gray-400">Returning</div>
+              <div class="text-[12px] font-semibold text-yellow-600 dark:text-yellow-400" id="r-returning">0</div>
+            </div>
+            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-1.5 bg-white dark:bg-gray-900">
+              <div class="text-[0.45rem] uppercase tracking-wider text-gray-500 dark:text-gray-400">Existing</div>
+              <div class="text-[12px] font-semibold text-blue-600 dark:text-blue-400" id="r-existing">0</div>
+            </div>
+            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-1.5 bg-white dark:bg-gray-900">
+              <div class="text-[0.45rem] uppercase tracking-wider text-gray-500 dark:text-gray-400">Retention</div>
+              <div class="text-[12px] font-semibold text-purple-600 dark:text-purple-400" id="r-retention">—</div>
+            </div>
+          </div>
+
+          <div id="result-sections" class="flex-1 flex flex-col gap-1.5 overflow-hidden">
+            <!-- Row 1: Unfollowed & New -->
+            <div class="min-w-0 w-full flex gap-1.5 flex-1 min-h-0 overflow-hidden">
+              <div class="flex-1 border border-gray-200 dark:border-gray-700 rounded-xl p-1.5 min-h-0 overflow-hidden flex flex-col bg-white dark:bg-gray-900">
+                <div class="flex items-center justify-between mb-0.5">
+
+<span class="text-[0.55rem] flex items-center gap-1 text-gray-700 dark:text-gray-300"><i class="fa-regular fa-person-walking-arrow-right text-[10px] text-red-400 dark:text-red-500"></i> Unfollowed <span class="px-1.5 py-0.5 rounded-full text-[0.5rem] border border-gray-200 dark:border-gray-600 text-red-600 dark:text-red-400 font-semibold" id="r-unfollowed-badge">0</span></span>
+
+<div class="flex gap-1">
+                    <button class="copy-section-btn border border-gray-200 dark:border-gray-700 rounded-lg px-1.5 py-0.5 text-[0.5rem] transition bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700" data-target="unfollowed-list" aria-label="Copy"><i class="fa-regular fa-copy"></i></button>
+<button class="download-section-btn border border-gray-200 dark:border-gray-700 rounded-lg px-1.5 py-0.5 text-[0.5rem] transition bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700" data-target="unfollowed-list" aria-label="Download"><i class="fa-regular fa-download"></i></button>
+                  </div>
+                </div>
+                <input type="text" class="filter-input w-full border border-gray-200 dark:border-gray-700 rounded px-1.5 py-0.5 text-[0.55rem] placeholder:text-gray-400 dark:placeholder:text-gray-500 mb-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" placeholder="Filter..." data-target="unfollowed-list" />
+                <pre id="unfollowed-list" class="sunken flex-1 text-[0.625rem] overflow-y-auto whitespace-pre-wrap break-all bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200">—</pre>
+              </div>
+              <div class="flex-1 border border-gray-200 dark:border-gray-700 rounded-xl p-1.5 min-h-0 overflow-hidden flex flex-col bg-white dark:bg-gray-900">
+                <div class="flex items-center justify-between mb-0.5">
+
+<span class="text-[0.55rem] flex items-center gap-1 text-gray-700 dark:text-gray-300"><i class="fa-regular fa-user-plus text-[10px] text-emerald-400 dark:text-emerald-500"></i> New <span class="px-1.5 py-0.5 rounded-full text-[0.5rem] border border-gray-200 dark:border-gray-600 text-emerald-600 dark:text-emerald-400 font-semibold" id="r-new-badge">0</span></span>
+
+<div class="flex gap-1">
+                    <button class="copy-section-btn border border-gray-200 dark:border-gray-700 rounded-lg px-1.5 py-0.5 text-[0.5rem] transition bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700" data-target="new-list" aria-label="Copy"><i class="fa-regular fa-copy"></i></button>
+                    <button class="download-section-btn border border-gray-200 dark:border-gray-700 rounded-lg px-1.5 py-0.5 text-[0.5rem] transition bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700" data-target="new-list" aria-label="Download"><i class="fa-regular fa-download"></i></button>
+                  </div>
+                </div>
+                <input type="text" class="filter-input w-full border border-gray-200 dark:border-gray-700 rounded px-1.5 py-0.5 text-[0.55rem] placeholder:text-gray-400 dark:placeholder:text-gray-500 mb-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" placeholder="Filter..." data-target="new-list" />
+                <pre id="new-list" class="sunken flex-1 text-[0.625rem] overflow-y-auto whitespace-pre-wrap break-all bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200">—</pre>
+              </div>
+            </div>
+            <!-- Row 2: Returning & Existing -->
+            <div class="min-w-0 w-full flex gap-1.5 flex-1 min-h-0 overflow-hidden">
+              <div class="flex-1 border border-gray-200 dark:border-gray-700 rounded-xl p-1.5 min-h-0 overflow-hidden flex flex-col bg-white dark:bg-gray-900">
+                <div class="flex items-center justify-between mb-0.5">
+<span class="text-[0.55rem] flex items-center gap-1 text-gray-700 dark:text-gray-300"><i class="fa-regular fa-rotate-right text-[10px] text-amber-400 dark:text-amber-500"></i> Returning <span class="px-1.5 py-0.5 rounded-full text-[0.5rem] border border-gray-200 dark:border-gray-600 text-amber-600 dark:text-amber-400 font-semibold" id="r-returning-badge">0</span></span>
+<div class="flex gap-1">
+                    <button class="copy-section-btn border border-gray-200 dark:border-gray-700 rounded-lg px-1.5 py-0.5 text-[0.5rem] transition bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700" data-target="returning-list" aria-label="Copy"><i class="fa-regular fa-copy"></i></button>
+                    <button class="download-section-btn border border-gray-200 dark:border-gray-700 rounded-lg px-1.5 py-0.5 text-[0.5rem] transition bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700" data-target="returning-list" aria-label="Download"><i class="fa-regular fa-download"></i></button>
+                  </div>
+                </div>
+                <input type="text" class="filter-input w-full border border-gray-200 dark:border-gray-700 rounded px-1.5 py-0.5 text-[0.55rem] placeholder:text-gray-400 dark:placeholder:text-gray-500 mb-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" placeholder="Filter..." data-target="returning-list" />
+                <pre id="returning-list" class="sunken flex-1 text-[0.625rem] overflow-y-auto whitespace-pre-wrap break-all bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200">—</pre>
+              </div>
+              <div class="flex-1 border border-gray-200 dark:border-gray-700 rounded-xl p-1.5 min-h-0 overflow-hidden flex flex-col bg-white dark:bg-gray-900">
+                <div class="flex items-center justify-between mb-0.5">
+<span class="text-[0.55rem] flex items-center gap-1 text-gray-700 dark:text-gray-300"><i class="fa-regular fa-user-check text-[10px] text-blue-400 dark:text-blue-500"></i> Existing <span class="px-1.5 py-0.5 rounded-full text-[0.5rem] border border-gray-200 dark:border-gray-600 text-blue-600 dark:text-blue-400 font-semibold" id="r-existing-badge">0</span></span>
+                  <div class="flex gap-1">
+                    <button class="copy-section-btn border border-gray-200 dark:border-gray-700 rounded-lg px-1.5 py-0.5 text-[0.5rem] transition bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700" data-target="existing-list" aria-label="Copy"><i class="fa-regular fa-copy"></i></button>
+                    <button class="download-section-btn border border-gray-200 dark:border-gray-700 rounded-lg px-1.5 py-0.5 text-[0.5rem] transition bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700" data-target="existing-list" aria-label="Download"><i class="fa-regular fa-download"></i></button>
+                  </div>
+                </div>
+                <input type="text" class="filter-input w-full border border-gray-200 dark:border-gray-700 rounded px-1.5 py-0.5 text-[0.55rem] placeholder:text-gray-400 dark:placeholder:text-gray-500 mb-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100" placeholder="Filter..." data-target="existing-list" />
+                <pre id="existing-list" class="sunken flex-1 text-[0.625rem] overflow-y-auto whitespace-pre-wrap break-all bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200">—</pre>
+              </div>
+            </div>
+          </div>
+
+          <div id="result-empty-msg" class="text-[0.5rem] text-center py-1 text-gray-400 dark:text-gray-500">No comparison data yet. Extract both files and run Compare.</div>
+          <div id="result-single-msg" class="text-[0.5rem] text-center py-1 text-gray-400 dark:text-gray-500 hidden">Need both files extracted for comparison.</div>
+        </div>
+
+        <!-- Tab: Stats -->
+        <div id="tab-stats" class="hidden h-full flex flex-col gap-1.5 overflow-y-auto scroll-thin pb-1">
+          <div class="border border-gray-200 dark:border-gray-700 rounded-xl p-1.5 bg-white dark:bg-gray-900">
+            <div class="flex items-center gap-1.5 mb-1">
+              <i class="fa-regular fa-chart-simple text-[10px] text-gray-500 dark:text-gray-400"></i>
+              <span class="text-[0.55rem] font-medium text-gray-700 dark:text-gray-300">Per‑file Extraction Stats</span>
+              <button id="copy-stats-btn" class="border border-gray-200 dark:border-gray-700 rounded-lg px-1.5 py-0.5 text-[0.5rem] transition ml-auto bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700" aria-label="Copy"><i class="fa-regular fa-copy"></i><span>Copy</span></button>
+            </div>
+            <div class="rounded-lg p-1.5 mb-1 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
+              <div class="flex items-center gap-1 text-[0.55rem] text-gray-600 dark:text-gray-400"><i class="fa-regular fa-file-lines text-[10px]"></i> Old File</div>
+              <div class="grid grid-cols-3 gap-1 text-[0.55rem] mt-0.5 text-gray-600 dark:text-gray-400">
+                <div><span>Raw</span> <span class="block font-semibold text-gray-900 dark:text-gray-100" id="st-old-raw">—</span></div>
+                <div><span>Cleaned</span> <span class="block font-semibold text-gray-900 dark:text-gray-100" id="st-old-clean">—</span></div>
+                <div><span>Removed</span> <span class="block font-semibold text-gray-900 dark:text-gray-100" id="st-old-removed">—</span></div>
+              </div>
+            </div>
+            <div class="rounded-lg p-1.5 mb-1 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
+              <div class="flex items-center gap-1 text-[0.55rem] text-gray-600 dark:text-gray-400"><i class="fa-regular fa-file-lines text-[10px]"></i> New File</div>
+              <div class="grid grid-cols-3 gap-1 text-[0.55rem] mt-0.5 text-gray-600 dark:text-gray-400">
+                <div><span>Raw</span> <span class="block font-semibold text-gray-900 dark:text-gray-100" id="st-new-raw">—</span></div>
+                <div><span>Cleaned</span> <span class="block font-semibold text-gray-900 dark:text-gray-100" id="st-new-clean">—</span></div>
+                <div><span>Removed</span> <span class="block font-semibold text-gray-900 dark:text-gray-100" id="st-new-removed">—</span></div>
+              </div>
+              <div id="st-new-absent" class="text-[0.5rem] mt-0.5 text-gray-400 dark:text-gray-500 hidden">(not extracted yet)</div>
+            </div>
+            <div class="rounded-lg p-1.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
+              <div class="text-[0.55rem] text-gray-600 dark:text-gray-400">Total Removed (both files)</div>
+              <div class="font-semibold text-gray-900 dark:text-gray-100" id="st-removed-total">—</div>
+            </div>
+            <div id="stats-sample" class="mt-1 text-[0.5rem] break-all text-gray-500 dark:text-gray-400"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 px-3 py-1 flex items-center justify-between text-[0.5rem] bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400">
+      <span><i class="fa-regular fa-database"></i> <span id="footer-memory">—</span></span>
+      <span class="flex items-center gap-1.5">
+        <span id="footer-status"><i class="fa-regular fa-circle text-[6px] text-gray-400 dark:text-gray-500"></i> idle</span>
+        <span class="hidden sm:inline">·</span>
+        <span class="hidden sm:inline" id="footer-time"></span>
+      </span>
+    </footer>
+  </div>
+
+  <script src="./fans.js"></script>
+  <script src="./dom.js"></script>
+  <script src="./core.js"></script>
+  <script src="./render.js"></script>
+  <script src="./app.js"></script>
+
+</body>
+</html>

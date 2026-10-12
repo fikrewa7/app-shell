@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>jafApps · Cache Inspector</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  html, body { height: 100%; }
+  body { font-family: 'DM Sans', system-ui, sans-serif; overscroll-behavior: none; }
+  .font-poppins { font-family: 'Poppins', sans-serif; }
+  ::-webkit-scrollbar { width: 0; height: 0; }
+  * { scrollbar-width: none; }
+  .clock-colon { animation: blink 1s step-start infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .nav-active { background: rgba(6,182,212,0.15); border-left: 3px solid #06b6d4; }
+  .dup-tag { background: rgba(244,114,182,0.15); color: #f9a8d4; border: 1px solid rgba(244,114,182,0.35); }
+  .err-tag { background: rgba(248,113,113,0.15); color: #fca5a5; border: 1px solid rgba(248,113,113,0.35); }
+  .ok-tag  { background: rgba(52,211,153,0.15); color: #6ee7b7; border: 1px solid rgba(52,211,153,0.35); }
+  .drawer-open { transform: translateX(0) !important; }
+  .preset-empty { opacity: 0.35; }
+  .modal-open { display: flex !important; }
+</style>
+</head>
+
+<body class="bg-[#0d1a1f] text-[#e5e7eb] antialiased flex flex-col overflow-hidden">
+
+<!-- ═══ Header ═══ -->
+<header class="flex-shrink-0 h-11 bg-[#0d1a1f] border-b border-[#1a3a42] flex items-center gap-2 px-2 z-30">
+  <button id="menu-btn" class="text-cyan-400 hover:text-cyan-200 w-8 h-8 flex items-center justify-center flex-shrink-0">
+    <i class="fa-solid fa-bars text-[15px]"></i>
+  </button>
+  <span class="font-poppins font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-white to-cyan-200 text-[14px] flex-shrink-0">jafApps</span>
+
+  <div class="flex-1 flex items-center justify-end gap-1 min-w-0">
+    <div class="relative flex-1 min-w-0">
+      <i class="fa-solid fa-magnifying-glass absolute left-2 top-1/2 -translate-y-1/2 text-cyan-400/50 text-[10px]"></i>
+      <input id="filter-input" type="text" value="cache" placeholder="filter…"
+        class="w-full bg-[#13272e] border border-cyan-800/40 focus:border-cyan-400/60 rounded pl-6 pr-2 py-1 text-[11px] font-mono text-cyan-100 outline-none placeholder:text-cyan-200/30" />
+    </div>
+    <button id="refresh-btn" class="text-cyan-400 hover:text-cyan-200 w-8 h-8 flex items-center justify-center flex-shrink-0" title="Rescan">
+      <i class="fa-solid fa-rotate-right text-[13px]"></i>
+    </button>
+    <button id="theme-toggle" class="text-cyan-400 hover:text-cyan-200 w-8 h-8 flex items-center justify-center flex-shrink-0">
+      <i class="fas fa-moon text-[12px]"></i>
+    </button>
+  </div>
+</header>
+
+<!-- ═══ Body ═══ -->
+<div class="flex-1 flex overflow-hidden relative min-h-0">
+
+  <div id="backdrop" class="hidden fixed inset-0 bg-black/60 z-30"></div>
+
+  <aside id="sidebar"
+    class="fixed inset-y-0 left-0 z-40 w-[64vw] max-w-[240px] bg-[#1a2e36]
+           border-r border-cyan-400/20 flex flex-col flex-shrink-0 p-2 gap-3 overflow-y-auto
+           -translate-x-full transition-transform duration-200">
+
+    <div class="flex items-center justify-between px-1 pb-2 border-b border-cyan-800/20">
+      <span class="font-poppins font-bold text-cyan-300 text-[13px]">Menu</span>
+      <button id="close-btn" class="text-cyan-400 hover:text-cyan-200 w-7 h-7 flex items-center justify-center">
+        <i class="fa-solid fa-xmark text-[14px]"></i>
+      </button>
+    </div>
+
+    <div class="px-1 text-[10px] text-cyan-200/60">
+      <span id="total-count" class="font-mono text-cyan-300">0</span> keys in this origin
+    </div>
+
+    <div>
+      <div class="text-[9px] uppercase tracking-widest text-cyan-400/50 font-semibold mb-1 px-1">Views</div>
+      <nav id="view-nav" class="flex flex-col gap-0.5 text-[12px]">
+        <button data-view="all"    class="view-btn-nav nav-active text-left rounded px-2 py-2 text-cyan-200 flex items-center gap-2">
+          <i class="fa-solid fa-list w-3"></i><span class="flex-1">All keys</span>
+          <span class="view-count text-[10px] font-mono text-cyan-400/60">–</span>
+        </button>
+        <button data-view="blobs"  class="view-btn-nav text-left rounded px-2 py-2 text-cyan-200 flex items-center gap-2">
+          <i class="fa-solid fa-box-archive w-3"></i><span class="flex-1">Blob caches</span>
+          <span class="view-count text-[10px] font-mono text-cyan-400/60">–</span>
+        </button>
+        <button data-view="dupes"  class="view-btn-nav text-left rounded px-2 py-2 text-cyan-200 flex items-center gap-2">
+          <i class="fa-solid fa-clone w-3"></i><span class="flex-1">Duplicates</span>
+          <span class="view-count text-[10px] font-mono text-cyan-400/60">–</span>
+        </button>
+        <button data-view="errors" class="view-btn-nav text-left rounded px-2 py-2 text-cyan-200 flex items-center gap-2">
+          <i class="fa-solid fa-triangle-exclamation w-3"></i><span class="flex-1">Parse errors</span>
+          <span class="view-count text-[10px] font-mono text-cyan-400/60">–</span>
+        </button>
+        <button data-view="big"    class="view-btn-nav text-left rounded px-2 py-2 text-cyan-200 flex items-center gap-2">
+          <i class="fa-solid fa-weight-hanging w-3"></i><span class="flex-1">Big (&gt;100KB)</span>
+          <span class="view-count text-[10px] font-mono text-cyan-400/60">–</span>
+        </button>
+      </nav>
+    </div>
+
+    <div>
+      <div class="text-[9px] uppercase tracking-widest text-cyan-400/50 font-semibold mb-1 px-1">Presets</div>
+      <div id="presets" class="flex flex-wrap gap-1 px-1">
+        <button data-preset="cache"      class="preset-chip text-[10px] font-mono bg-cyan-900/40 border border-cyan-700/40 rounded px-1.5 py-1 text-cyan-200 flex items-center gap-1">
+          <span>cache</span><span class="preset-count text-cyan-400/60">–</span>
+        </button>
+        <button data-preset="blob"       class="preset-chip text-[10px] font-mono bg-cyan-900/40 border border-cyan-700/40 rounded px-1.5 py-1 text-cyan-200 flex items-center gap-1">
+          <span>blob</span><span class="preset-count text-cyan-400/60">–</span>
+        </button>
+        <button data-preset="screenshot" class="preset-chip text-[10px] font-mono bg-cyan-900/40 border border-cyan-700/40 rounded px-1.5 py-1 text-cyan-200 flex items-center gap-1">
+          <span>screenshot</span><span class="preset-count text-cyan-400/60">–</span>
+        </button>
+        <button data-preset="tiktok"     class="preset-chip text-[10px] font-mono bg-cyan-900/40 border border-cyan-700/40 rounded px-1.5 py-1 text-cyan-200 flex items-center gap-1">
+          <span>tiktok</span><span class="preset-count text-cyan-400/60">–</span>
+        </button>
+        <button data-preset="video"      class="preset-chip text-[10px] font-mono bg-cyan-900/40 border border-cyan-700/40 rounded px-1.5 py-1 text-cyan-200 flex items-center gap-1">
+          <span>video</span><span class="preset-count text-cyan-400/60">–</span>
+        </button>
+        <button data-preset=""           class="preset-chip text-[10px] font-mono bg-cyan-900/40 border border-cyan-700/40 rounded px-1.5 py-1 text-cyan-200 flex items-center gap-1">
+          <span>all</span><span class="preset-count text-cyan-400/60">–</span>
+        </button>
+      </div>
+    </div>
+
+    <div>
+      <div class="text-[9px] uppercase tracking-widest text-cyan-400/50 font-semibold mb-1 px-1">Sort</div>
+      <select id="sort-select" class="w-full bg-[#13272e] border border-cyan-800/40 rounded text-[11px] text-cyan-100 px-2 py-1.5 outline-none">
+        <option value="bytes:desc">Size ↓</option>
+        <option value="bytes:asc">Size ↑</option>
+        <option value="blobCount:desc">Blobs ↓</option>
+        <option value="savedAt:desc">Newest saved</option>
+        <option value="savedAt:asc">Oldest saved</option>
+        <option value="key:asc">Key A→Z</option>
+        <option value="key:desc">Key Z→A</option>
+      </select>
+    </div>
+
+    <div class="mt-auto flex flex-col gap-0.5 pt-2 border-t border-cyan-800/20">
+      <div class="text-[9px] uppercase tracking-widest text-cyan-400/50 font-semibold mb-1 px-1">Actions</div>
+      <button id="export-btn" class="text-left text-[12px] rounded px-2 py-2 text-cyan-200 hover:bg-cyan-400/10 flex items-center gap-2"><i class="fa-solid fa-file-export w-3"></i>Export JSON</button>
+      <button id="copy-btn"   class="text-left text-[12px] rounded px-2 py-2 text-cyan-200 hover:bg-cyan-400/10 flex items-center gap-2"><i class="fa-solid fa-copy w-3"></i>Copy visible</button>
+      <button id="delete-sel-btn"      class="text-left text-[12px] rounded px-2 py-2 text-rose-300 hover:bg-rose-500/10 flex items-center gap-2"><i class="fa-solid fa-trash-can w-3"></i>Delete selected</button>
+      <button id="delete-filtered-btn" class="text-left text-[12px] rounded px-2 py-2 text-rose-300 hover:bg-rose-500/10 flex items-center gap-2"><i class="fa-solid fa-broom w-3"></i>Delete filtered</button>
+    </div>
+  </aside>
+
+  <section class="flex-1 flex flex-col min-w-0 min-h-0">
+
+    <div id="stats" class="flex-shrink-0 grid grid-cols-5 gap-1 px-1.5 py-1.5 border-b border-cyan-800/20"></div>
+
+    <div id="sel-bar" class="hidden flex-shrink-0 flex items-center justify-between px-3 py-1.5 bg-cyan-400/10 border-b border-cyan-400/20 text-[11px]">
+      <span id="sel-count" class="text-cyan-200"></span>
+      <button id="sel-clear" class="text-cyan-300 hover:text-white text-[10px] uppercase tracking-wider">Clear</button>
+    </div>
+
+    <div id="list-area" class="flex-1 overflow-y-auto min-h-0 p-2">
+      <div id="cards"></div>
+      <div id="empty" class="hidden p-6 text-center text-cyan-200/50 text-[11px] leading-relaxed">
+        <i class="fa-solid fa-inbox text-2xl mb-2 block opacity-40"></i>
+        <div id="empty-msg">No keys match.</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<footer class="flex-shrink-0 h-7 bg-[#0d1a1f] border-t border-[#1a3a42] flex items-center justify-between px-2 z-20">
+  <div class="flex items-center gap-2 text-[8px] text-cyan-100/60">
+    <span class="flex items-center gap-1">
+      <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+    </span>
+    <span>JaferF. © 2026</span>
+    <span id="row-count" class="text-cyan-300/80 font-mono"></span>
+  </div>
+  <div class="font-mono text-[8px] text-cyan-200/70 flex items-center">
+    <span id="clock-day" class="font-sans opacity-70 mr-1"></span>
+    <span id="clock-hours">--</span>
+    <span class="clock-colon">:</span>
+    <span id="clock-minutes">--</span>
+    <span id="clock-ampm" class="ml-0.5"></span>
+  </div>
+</footer>
+
+<!-- ═══ Modal for inspecting a key ═══ -->
+<div id="inspect-modal"
+     class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm items-center justify-center p-3"
+     role="dialog" aria-modal="true" aria-labelledby="inspect-title">
+  <div class="bg-[#13272e] border border-cyan-400/30 rounded-lg w-full max-w-2xl h-[88vh] flex flex-col overflow-hidden shadow-2xl">
+
+    <div class="flex-shrink-0 flex items-start gap-2 px-3 py-2 border-b border-cyan-800/30">
+      <div class="flex-1 min-w-0">
+        <div id="inspect-title" class="font-mono text-[11px] text-cyan-100 break-all leading-snug"></div>
+        <div id="inspect-meta" class="text-[9px] text-cyan-200/50 mt-0.5 font-mono"></div>
+      </div>
+      <button id="inspect-close" class="flex-shrink-0 w-8 h-8 flex items-center justify-center text-cyan-400 hover:text-cyan-200" aria-label="Close">
+        <i class="fa-solid fa-xmark text-[16px]"></i>
+      </button>
+    </div>
+
+    <div id="inspect-warn" class="hidden flex-shrink-0 px-3 py-1.5 text-[10px] bg-amber-500/15 text-amber-200 border-b border-amber-500/30"></div>
+
+    <div class="flex-1 overflow-y-auto min-h-0 p-3">
+      <pre id="inspect-body" class="font-mono text-[10px] leading-relaxed text-cyan-100 whitespace-pre-wrap break-words m-0"></pre>
+    </div>
+
+    <div class="flex-shrink-0 flex items-center gap-1.5 px-2 py-2 border-t border-cyan-800/30">
+      <button id="inspect-copy" class="flex-1 text-[11px] py-2 rounded bg-cyan-900/40 border border-cyan-700/40 text-cyan-200 hover:bg-cyan-800/60 flex items-center justify-center gap-1.5">
+        <i class="fa-solid fa-copy text-[11px]"></i>Copy
+      </button>
+      <button id="inspect-download" class="flex-1 text-[11px] py-2 rounded bg-cyan-900/40 border border-cyan-700/40 text-cyan-200 hover:bg-cyan-800/60 flex items-center justify-center gap-1.5">
+        <i class="fa-solid fa-download text-[11px]"></i>Download
+      </button>
+      <button id="inspect-close-2" class="flex-1 text-[11px] py-2 rounded bg-cyan-800/60 border border-cyan-600/40 text-white hover:bg-cyan-700 flex items-center justify-center gap-1.5">
+        <i class="fa-solid fa-xmark text-[11px]"></i>Close
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══ State ═══ */
+const state = {
+  allRaw: [],
+  all: [],
+  filter: 'cache',
+  view: 'all',
+  sort: { key: 'bytes', dir: 'desc' },
+  selected: new Set()
+};
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function byteLen(s) {
+  if (!s) {
+    return 0;
+  }
+  return new Blob([s]).size;
+}
+
+function fmtBytes(n) {
+  if (n == null) {
+    return '—';
+  }
+  if (n < 1024) {
+    return n + 'B';
+  }
+  if (n < 1048576) {
+    return (n / 1024).toFixed(1) + 'K';
+  }
+  return (n / 1048576).toFixed(2) + 'M';
+}
+
+function fmtAge(ts) {
+  if (!ts) {
+    return '—';
+  }
+  const s = Math.floor((Date.now() - new Date(ts).getTime()) / 1000);
+  if (isNaN(s)) {
+    return '—';
+  }
+  if (s < 60) {
+    return s + 's';
+  }
+  if (s < 3600) {
+    return Math.floor(s / 60) + 'm';
+  }
+  if (s < 86400) {
+    return Math.floor(s / 3600) + 'h';
+  }
+  return Math.floor(s / 86400) + 'd';
+}
+
+/* Toast */
+let _toastTimer = null;
+function toast(msg, kind) {
+  let el = document.getElementById('toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'toast';
+    el.className = 'fixed left-1/2 -translate-x-1/2 bottom-10 z-[60] px-3 py-2 rounded text-[11px] shadow-lg transition-opacity duration-200 pointer-events-none text-white border';
+    document.body.appendChild(el);
+  }
+  el.classList.remove('bg-rose-900/90', 'bg-cyan-900/90', 'border-rose-500/40', 'border-cyan-500/40');
+  if (kind === 'error') {
+    el.classList.add('bg-rose-900/90', 'border-rose-500/40');
+  } else {
+    el.classList.add('bg-cyan-900/90', 'border-cyan-500/40');
+  }
+  el.textContent = msg;
+  el.style.opacity = '1';
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => {
+    el.style.opacity = '0';
+  }, 2200);
+}
+
+/* ═══ View matcher ═══ */
+function matchesView(r, view) {
+  if (view === 'blobs') {
+    return r.blobCount != null;
+  }
+  if (view === 'dupes') {
+    return !!r.dupGroup;
+  }
+  if (view === 'errors') {
+    return !!r.parseError;
+  }
+  if (view === 'big') {
+    return r.bytes > 102400;
+  }
+  return true;
+}
+
+/* ═══ Scan ═══ */
+function scan() {
+  const results = [];
+
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key) {
+        continue;
+      }
+      const raw = localStorage.getItem(key);
+      if (raw === null) {
+        continue;
+      }
+
+      const e = {
+        key,
+        bytes: byteLen(raw),
+        blobCount: null,
+        blobKeys: null,
+        storeId: null,
+        savedAt: null,
+        parseError: null,
+        dupGroup: null,
+        dupGroupId: null
+      };
+
+      try {
+        const parsed = JSON.parse(raw);
+        const blobs =
+          Array.isArray(parsed) ? parsed :
+          Array.isArray(parsed?.blobs) ? parsed.blobs :
+          Array.isArray(parsed?.data?.blobs) ? parsed.data.blobs :
+          null;
+
+        if (blobs) {
+          e.blobCount = blobs.length;
+          e.storeId = parsed.storeId ?? parsed.data?.storeId ?? null;
+          e.blobKeys = blobs
+            .map(b => (e.storeId || '') + '|' + (b.pathname || b.url || ''))
+            .filter(s => s.length > 1);
+        }
+        e.savedAt = parsed?.savedAt ?? parsed?.timestamp ?? null;
+      } catch (err) {
+        e.parseError = err.message;
+      }
+
+      results.push(e);
+    }
+  } catch (err) {
+    console.error('[cache-inspector] localStorage scan failed:', err);
+  }
+
+  const groups = new Map();
+  for (const r of results) {
+    if (!r.blobKeys || !r.blobKeys.length) {
+      continue;
+    }
+    const fp = r.blobKeys.slice().sort().join('|');
+    if (!groups.has(fp)) {
+      groups.set(fp, []);
+    }
+    groups.get(fp).push(r.key);
+  }
+  for (const [fp, keys] of groups.entries()) {
+    if (keys.length > 1) {
+      for (const r of results) {
+        if (keys.includes(r.key)) {
+          r.dupGroup = keys;
+          r.dupGroupId = fp;
+        }
+      }
+    }
+  }
+
+  state.allRaw = results;
+  // console.log(`[cache-inspector] scanned ${results.length} keys in localStorage`);
+  if (results.length) {
+    // console.log('[cache-inspector] keys:', results.map(r => r.key));
+  }
+
+  applyFilter();
+}
+
+/* ═══ Filtering ═══ */
+function applyFilter() {
+  const needle = (state.filter || '').toLowerCase();
+  if (needle) {
+    state.all = state.allRaw.filter(r => r.key.toLowerCase().includes(needle));
+  } else {
+    state.all = state.allRaw.slice();
+  }
+
+  updatePresetCounts();
+  updateViewCounts();
+}
+
+/* ═══ Badges ═══ */
+function updatePresetCounts() {
+  $('total-count').textContent = state.allRaw.length;
+
+  document.querySelectorAll('.preset-chip').forEach(btn => {
+    const preset = btn.dataset.preset || '';
+    let count;
+    if (preset) {
+      count = state.allRaw.filter(r => r.key.toLowerCase().includes(preset.toLowerCase())).length;
+    } else {
+      count = state.allRaw.length;
+    }
+
+    const badge = btn.querySelector('.preset-count');
+    if (badge) {
+      badge.textContent = count;
+    }
+
+    btn.classList.toggle('preset-empty', count === 0);
+    if (count === 0) {
+      btn.title = `No keys contain "${preset || '(all)'}"`;
+    } else {
+      btn.title = `${count} key${count === 1 ? '' : 's'}`;
+    }
+  });
+}
+
+function updateViewCounts() {
+  document.querySelectorAll('.view-btn-nav').forEach(btn => {
+    const v = btn.dataset.view;
+    const count = state.all.filter(r => matchesView(r, v)).length;
+
+    const badge = btn.querySelector('.view-count');
+    if (badge) {
+      badge.textContent = count;
+    }
+
+    btn.classList.toggle('preset-empty', count === 0);
+    if (count === 0) {
+      btn.title = 'No keys in this view with the current filter';
+    } else {
+      btn.title = `${count} key${count === 1 ? '' : 's'}`;
+    }
+  });
+}
+
+/* ═══ Stats ═══ */
+function computeStats(rows) {
+  let bytes = 0, caches = 0, refs = 0, errors = 0;
+  const uniqueBlobs = new Set();
+  const dupGroups = new Set();
+  let dupKeys = 0;
+
+  for (const r of rows) {
+    bytes += r.bytes;
+    if (r.blobCount != null) {
+      caches++;
+      refs += r.blobCount;
+      if (r.blobKeys) {
+        for (const k of r.blobKeys) {
+          uniqueBlobs.add(k);
+        }
+      }
+    }
+    if (r.parseError) {
+      errors++;
+    }
+    if (r.dupGroupId) {
+      dupGroups.add(r.dupGroupId);
+      dupKeys++;
+    }
+  }
+
+  return {
+    keys: rows.length, bytes,
+    blobs: uniqueBlobs.size, refs, caches,
+    dupGroups: dupGroups.size, dupKeys, errors
+  };
+}
+
+function renderStats() {
+  const f = computeStats(state.all);
+  const g = computeStats(state.allRaw);
+  const filterActive = state.filter.length > 0;
+
+  const cards = [
+    { label: 'KEYS',  value: f.keys,          title: filterActive ? `${f.keys} filtered / ${g.keys} total` : `${f.keys} in storage`, warn: false },
+    { label: 'SIZE',  value: fmtBytes(f.bytes), title: (filterActive && g.bytes !== f.bytes) ? `${fmtBytes(f.bytes)} filtered / ${fmtBytes(g.bytes)} total` : `${fmtBytes(f.bytes)} utf-8`, warn: false },
+    { label: 'BLOBS', value: f.blobs,         title: f.refs > f.blobs ? `${f.blobs} unique / ${f.refs} refs` : `${f.blobs} unique`, warn: false },
+    { label: 'DUP',   value: f.dupGroups,     title: f.dupGroups ? `${f.dupGroups} groups / ${f.dupKeys} keys` : 'no duplicates', warn: f.dupGroups > 0 },
+    { label: 'ERR',   value: f.errors,        title: f.errors ? `${f.errors} parse errors` : 'all clean', warn: f.errors > 0 }
+  ];
+
+  $('stats').innerHTML = cards.map(c => `
+    <div class="bg-[#13272e] rounded border ${c.warn ? 'border-amber-500/40' : 'border-cyan-400/20'} px-1 py-1 flex flex-col items-center justify-center min-w-0" title="${esc(c.title)}">
+      <div class="text-[7px] uppercase tracking-wider text-cyan-400/50 leading-none font-semibold">${c.label}</div>
+      <div class="text-[13px] font-semibold text-cyan-100 leading-tight truncate max-w-full w-full text-center">${c.value}</div>
+    </div>
+  `).join('');
+}
+
+/* ═══ Filter + sort ═══ */
+function visible() {
+  let rows = state.all.filter(r => matchesView(r, state.view));
+
+  const dir = state.sort.dir === 'asc' ? 1 : -1;
+  const s = state.sort.key;
+
+  rows.sort((a, b) => {
+    let av = a[s], bv = b[s];
+
+    if (s === 'savedAt') {
+      av = av ? Date.parse(av) || 0 : 0;
+      bv = bv ? Date.parse(bv) || 0 : 0;
+    }
+
+    if (av == null) {
+      av = (typeof bv === 'number') ? 0 : '';
+    }
+    if (bv == null) {
+      bv = (typeof av === 'number') ? 0 : '';
+    }
+
+    if (typeof av === 'number' && typeof bv === 'number') {
+      return (av - bv) * dir;
+    }
+    return String(av).localeCompare(String(bv)) * dir;
+  });
+
+  return rows;
+}
+
+/* ═══ Cards ═══ */
+function flagsHtml(r) {
+  const f = [];
+  if (r.dupGroup) {
+    f.push(`<span class="dup-tag rounded px-1.5 py-0.5 text-[9px]">dup ×${r.dupGroup.length}</span>`);
+  }
+  if (r.parseError) {
+    f.push(`<span class="err-tag rounded px-1.5 py-0.5 text-[9px]">error</span>`);
+  }
+  if (r.blobCount != null && !r.dupGroup && !r.parseError) {
+    f.push(`<span class="ok-tag rounded px-1.5 py-0.5 text-[9px]">ok</span>`);
+  }
+  if (f.length === 0) {
+    return '<span class="text-cyan-200/25 text-[9px]">—</span>';
+  }
+  return f.join(' ');
+}
+
+function renderCards(rows) {
+  const el = $('cards');
+  if (rows.length === 0) {
+    el.innerHTML = '';
+    return;
+  }
+
+  el.innerHTML = rows.map(r => {
+    const sel = state.selected.has(r.key);
+    return `
+    <div class="bg-[#13272e] rounded-lg border ${sel ? 'border-cyan-400/60' : 'border-cyan-400/20'} p-2.5 mb-2">
+      <div class="flex items-start gap-2">
+        <input type="checkbox" class="row-check accent-cyan-500 mt-0.5 flex-shrink-0" data-key="${esc(r.key)}" ${sel ? 'checked' : ''}>
+        <div class="flex-1 min-w-0 text-[11px] font-mono text-cyan-100 break-all">${esc(r.key)}</div>
+        <div class="flex gap-0.5 flex-shrink-0">
+          <button class="inspect-btn text-cyan-400 active:text-cyan-200 w-8 h-8 flex items-center justify-center"
+                  data-key="${esc(r.key)}" title="Inspect JSON" aria-label="Inspect JSON">
+            <i class="fa-solid fa-eye text-[12px]"></i>
+          </button>
+          <button class="del-btn text-rose-400 active:text-rose-200 w-8 h-8 flex items-center justify-center"
+                  data-key="${esc(r.key)}" title="Delete key" aria-label="Delete key">
+            <i class="fa-solid fa-trash text-[12px]"></i>
+          </button>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-x-3 gap-y-1 mt-2 text-[10px] font-mono">
+        <div><span class="text-cyan-400/50">Size </span><span class="text-cyan-100">${fmtBytes(r.bytes)}</span></div>
+        <div><span class="text-cyan-400/50">Blobs </span><span class="text-cyan-100">${r.blobCount ?? '—'}</span></div>
+        <div class="col-span-2 truncate"><span class="text-cyan-400/50">Store </span><span class="text-cyan-100">${esc(r.storeId ?? '—')}</span></div>
+        <div class="col-span-2"><span class="text-cyan-400/50">Saved </span><span class="text-cyan-100">${r.savedAt ? fmtAge(r.savedAt) + ' ago' : '—'}</span></div>
+      </div>
+      <div class="flex flex-wrap gap-1 mt-2">${flagsHtml(r)}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ═══ Modal inspect ═══ */
+const INSPECT_MAX = 2 * 1024 * 1024;
+
+const _inspect = {
+  open: false,
+  key: null,
+  pretty: '',
+  full: '',
+  wasJson: false,
+  truncated: false
+};
+
+function openInspect(key) {
+  const raw = localStorage.getItem(key);
+  if (raw == null) {
+    toast('Key no longer exists', 'error');
+    return;
+  }
+
+  let pretty = raw;
+  let wasJson = false;
+  try {
+    pretty = JSON.stringify(JSON.parse(raw), null, 2);
+    wasJson = true;
+  } catch (_) {
+    wasJson = false;
+  }
+
+  let truncated = false;
+  let shown = pretty;
+  if (pretty.length > INSPECT_MAX) {
+    shown = pretty.slice(0, INSPECT_MAX);
+    truncated = true;
+  }
+
+  _inspect.open = true;
+  _inspect.key = key;
+  _inspect.pretty = shown;
+  _inspect.full = pretty;
+  _inspect.wasJson = wasJson;
+  _inspect.truncated = truncated;
+
+  $('inspect-title').textContent = key;
+  const totalLines = pretty.split('\n').length;
+  const shownLines = shown.split('\n').length;
+  let meta = `${wasJson ? 'JSON' : 'raw text'} · ${pretty.length.toLocaleString()} chars · ${totalLines.toLocaleString()} lines`;
+  if (truncated) {
+    meta += ` · showing first ${shownLines.toLocaleString()}`;
+  }
+  $('inspect-meta').textContent = meta;
+
+  const warn = $('inspect-warn');
+  if (truncated) {
+    warn.textContent = `⚠ Truncated — showing first 2 MB of ${pretty.length.toLocaleString()} chars. Copy/Download gets the full value.`;
+    warn.classList.remove('hidden');
+  } else {
+    warn.classList.add('hidden');
+  }
+
+  $('inspect-body').textContent = shown;
+  $('inspect-body').scrollTop = 0;
+  $('inspect-modal').classList.remove('hidden');
+  $('inspect-modal').classList.add('modal-open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeInspect() {
+  _inspect.open = false;
+  $('inspect-modal').classList.add('hidden');
+  $('inspect-modal').classList.remove('modal-open');
+  document.body.style.overflow = '';
+}
+
+$('inspect-close').addEventListener('click', closeInspect);
+$('inspect-close-2').addEventListener('click', closeInspect);
+$('inspect-modal').addEventListener('click', e => {
+  if (e.target === $('inspect-modal')) {
+    closeInspect();
+  }
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && _inspect.open) {
+    closeInspect();
+  }
+});
+
+$('inspect-copy').addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(_inspect.full);
+    toast(`Copied ${_inspect.full.length.toLocaleString()} chars`);
+  } catch (_) {
+    toast('Clipboard denied', 'error');
+  }
+});
+
+$('inspect-download').addEventListener('click', () => {
+  const ext = _inspect.wasJson ? 'json' : 'txt';
+  const safe = _inspect.key.replace(/[^a-z0-9._-]+/gi, '_').slice(0, 80) || 'value';
+  const blob = new Blob([_inspect.full], { type: _inspect.wasJson ? 'application/json' : 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${safe}.${ext}`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Download started');
+});
+
+/* ═══ Render ═══ */
+function render() {
+  const rows = visible();
+  renderStats();
+  renderCards(rows);
+
+  const isEmpty = rows.length === 0;
+  $('empty').classList.toggle('hidden', !isEmpty);
+
+  if (isEmpty) {
+    const parts = [];
+    if (state.filter) {
+      parts.push(`filter "<b>${esc(state.filter)}</b>"`);
+    }
+    if (state.view !== 'all') {
+      const viewLabel = { blobs: 'Blob caches', dupes: 'Duplicates', errors: 'Parse errors', big: 'Big' }[state.view] || state.view;
+      parts.push(`view "<b>${esc(viewLabel)}</b>"`);
+    }
+
+    let msg;
+    if (state.allRaw.length === 0) {
+      msg = `localStorage has <b>0 keys</b> on this origin.<br>Open this page from the same URL as your app.`;
+    } else if (parts.length) {
+      msg = `No keys match ${parts.join(' and ')}.<br>Try clearing the filter or switching view.`;
+    } else {
+      msg = `No keys to show.`;
+    }
+    $('empty-msg').innerHTML = msg;
+  }
+
+  $('row-count').textContent = `${rows.length}/${state.allRaw.length}`;
+
+  const n = state.selected.size;
+  $('sel-bar').classList.toggle('hidden', n === 0);
+  $('sel-count').textContent = `${n} selected`;
+}
+
+/* ═══ Filter setter ═══ */
+function setFilter(text) {
+  state.filter = String(text ?? '');
+  state.selected.clear();
+  $('filter-input').value = state.filter;
+  applyFilter();
+  render();
+}
+
+/* ═══ Events ═══ */
+$('filter-input').addEventListener('input', e => setFilter(e.target.value));
+
+$('view-nav').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-view]');
+  if (!btn) {
+    return;
+  }
+  document.querySelectorAll('#view-nav button').forEach(b => b.classList.remove('nav-active'));
+  btn.classList.add('nav-active');
+  state.view = btn.dataset.view;
+  render();
+  closeDrawer();
+});
+
+document.querySelectorAll('.preset-chip').forEach(btn => {
+  btn.addEventListener('click', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    const preset = btn.dataset.preset ?? '';
+    //console.log(`[cache-inspector] preset "${preset}" clicked`);
+    setFilter(preset);
+    closeDrawer();
+  });
+});
+
+$('sort-select').addEventListener('change', e => {
+  const [k, d] = e.target.value.split(':');
+  state.sort = { key: k, dir: d };
+  render();
+});
+
+document.addEventListener('change', e => {
+  if (!e.target.classList.contains('row-check')) {
+    return;
+  }
+  const key = e.target.dataset.key;
+  if (e.target.checked) {
+    state.selected.add(key);
+  } else {
+    state.selected.delete(key);
+  }
+  render();
+});
+
+document.addEventListener('click', e => {
+  const inspect = e.target.closest('.inspect-btn');
+  if (inspect) {
+    e.preventDefault();
+    openInspect(inspect.dataset.key);
+    return;
+  }
+
+  const del = e.target.closest('.del-btn');
+  if (del) {
+    const key = del.dataset.key;
+    if (!confirm('Delete key?\n\n' + key)) {
+      return;
+    }
+    localStorage.removeItem(key);
+    state.selected.delete(key);
+    scan();
+    render();
+  }
+});
+
+$('sel-clear').addEventListener('click', () => {
+  state.selected.clear();
+  render();
+});
+
+$('refresh-btn').addEventListener('click', () => {
+  state.selected.clear();
+  scan();
+  render();
+});
+
+$('export-btn').addEventListener('click', () => {
+  const data = visible().map(r => ({
+    key: r.key, bytes: r.bytes, blobCount: r.blobCount,
+    storeId: r.storeId, savedAt: r.savedAt, dupGroup: r.dupGroup, parseError: r.parseError
+  }));
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `cache-scan-${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  closeDrawer();
+});
+
+$('copy-btn').addEventListener('click', async () => {
+  const keys = visible().map(r => r.key).join('\n');
+  try {
+    await navigator.clipboard.writeText(keys);
+    toast(`Copied ${visible().length} keys`);
+  } catch (_) {
+    toast('Clipboard denied', 'error');
+  }
+  closeDrawer();
+});
+
+$('delete-sel-btn').addEventListener('click', () => {
+  if (!state.selected.size) {
+    alert('Nothing selected.');
+    return;
+  }
+  if (!confirm(`Delete ${state.selected.size} selected keys?`)) {
+    return;
+  }
+  state.selected.forEach(k => localStorage.removeItem(k));
+  state.selected.clear();
+  scan();
+  render();
+  closeDrawer();
+});
+
+$('delete-filtered-btn').addEventListener('click', () => {
+  const rows = visible();
+  if (!rows.length) {
+    alert('Nothing to delete.');
+    return;
+  }
+  if (!confirm(`Delete ALL ${rows.length} visible keys? Cannot be undone.`)) {
+    return;
+  }
+  rows.forEach(r => localStorage.removeItem(r.key));
+  state.selected.clear();
+  scan();
+  render();
+  closeDrawer();
+});
+
+/* ═══ Drawer ═══ */
+const sidebar = $('sidebar');
+const backdrop = $('backdrop');
+
+function openDrawer() {
+  sidebar.classList.add('drawer-open');
+  backdrop.classList.remove('hidden');
+}
+function closeDrawer() {
+  sidebar.classList.remove('drawer-open');
+  backdrop.classList.add('hidden');
+}
+
+$('menu-btn').addEventListener('click', openDrawer);
+$('close-btn').addEventListener('click', closeDrawer);
+backdrop.addEventListener('click', closeDrawer);
+
+/* ═══ Theme ═══ */
+(function () {
+  let t = null;
+  try {
+    t = localStorage.getItem('shell-theme');
+  } catch (_) {
+    t = null;
+  }
+  if (t !== 'light') {
+    document.documentElement.classList.add('dark');
+    $('theme-toggle').innerHTML = '<i class="fas fa-moon text-[12px]"></i>';
+  } else {
+    $('theme-toggle').innerHTML = '<i class="fas fa-sun text-[12px]"></i>';
+  }
+})();
+
+$('theme-toggle').addEventListener('click', () => {
+  const isDark = !document.documentElement.classList.contains('dark');
+  document.documentElement.classList.toggle('dark', isDark);
+  if (isDark) {
+    $('theme-toggle').innerHTML = '<i class="fas fa-moon text-[12px]"></i>';
+  } else {
+    $('theme-toggle').innerHTML = '<i class="fas fa-sun text-[12px]"></i>';
+  }
+  try {
+    localStorage.setItem('shell-theme', isDark ? 'dark' : 'light');
+  } catch (_) {
+    /* ignore */
+  }
+});
+
+/* ═══ Clock ═══ */
+(function tick() {
+  const d = new Date();
+  $('clock-day').textContent = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()];
+  let h = d.getHours();
+  if (h >= 12) {
+    $('clock-ampm').textContent = 'PM';
+  } else {
+    $('clock-ampm').textContent = 'AM';
+  }
+  h = h % 12 || 12;
+  $('clock-hours').textContent = String(h).padStart(2, '0');
+  $('clock-minutes').textContent = String(d.getMinutes()).padStart(2, '0');
+  setTimeout(tick, 15000);
+})();
+
+/* ═══ Boot ═══ */
+scan();
+render();
+</script>
+</body>
+</html>

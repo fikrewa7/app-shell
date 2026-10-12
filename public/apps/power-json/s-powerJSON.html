@@ -1,0 +1,2009 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Power JSON Editor</title>
+    <script src="https://cdn.tailwindcss.com">
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontSize: {
+                        'xxs': '0.65rem',
+                    },
+                    spacing: {
+                        '1.5': '0.375rem',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * {
+            -webkit-tap-highlight-color: transparent;
+        }
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+        #syntax-overlay {
+            pointer-events: none;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            tab-size: 2;
+            font-family: 'SF Mono', 'Fira Code', 'Consolas', 'Monaco', monospace;
+            line-height: 1.5;
+        }
+        #raw-textarea {
+            font-family: 'SF Mono', 'Fira Code', 'Consolas', 'Monaco', monospace;
+            line-height: 1.5;
+            tab-size: 2;
+            caret-color: currentColor;
+            color: transparent;
+            background: transparent;
+            z-index: 10;
+            resize: none;
+        }
+        #raw-textarea::selection {
+            background: rgba(59, 130, 246, 0.35);
+        }
+        .tree-indent-guide {
+            border-left: 1px solid;
+        }
+        .dark .tree-indent-guide {
+            border-left-color: #374151;
+        }
+        .tree-indent-guide {
+            border-left-color: #d1d5db;
+        }
+        .tree-node-highlight {
+            background-color: #fef08a !important;
+        }
+        .dark .tree-node-highlight {
+            background-color: #854d0e !important;
+        }
+        .syntax-error-line {
+            background-color: rgba(239, 68, 68, 0.2);
+        }
+        .dark .syntax-error-line {
+            background-color: rgba(239, 68, 68, 0.35);
+        }
+        @media (max-width: 767px) {
+            #tree-pane,
+            #text-pane {
+                position: absolute;
+                inset: 0;
+                transition: opacity 0.15s ease;
+            }
+            #tree-pane.hidden-pane,
+            #text-pane.hidden-pane {
+                opacity: 0;
+                pointer-events: none;
+                z-index: 0;
+            }
+            #tree-pane:not(.hidden-pane),
+            #text-pane:not(.hidden-pane) {
+                opacity: 1;
+                pointer-events: auto;
+                z-index: 1;
+            }
+        }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden bg-gray-100 dark:bg-gray-950 text-gray-900 dark:text-gray-100 flex flex-col">
+
+    <!-- ========== APP CONTAINER ========== -->
+    <div id="app-container" class="flex flex-col h-screen w-screen overflow-hidden">
+
+        <!-- HEADER -->
+        <header id="app-header" class="flex-shrink-0 h-10 md:h-11 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 flex items-center px-2 gap-1.5 z-20 shadow-sm">
+            <i class="fa-solid fa-code text-blue-600 dark:text-blue-400 text-sm md:text-base"></i>
+            <span class="font-semibold text-xs md:text-sm tracking-tight whitespace-nowrap flex-1 min-w-0 truncate">Power JSON</span>
+            <button id="btn-import-file" title="Import File" class="min-w-[36px] min-h-[36px] md:min-w-[32px] md:min-h-[32px] flex items-center justify-center rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 text-xs md:text-sm transition-colors"><i class="fa-solid fa-folder-open"></i></button>
+            <button id="btn-import-url" title="Import URL" class="min-w-[36px] min-h-[36px] md:min-w-[32px] md:min-h-[32px] flex items-center justify-center rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 text-xs md:text-sm transition-colors"><i class="fa-solid fa-link"></i></button>
+            <button id="btn-paste" title="Paste JSON" class="min-w-[36px] min-h-[36px] md:min-w-[32px] md:min-h-[32px] flex items-center justify-center rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 text-xs md:text-sm transition-colors"><i class="fa-solid fa-paste"></i></button>
+            <button id="btn-copy" title="Copy JSON" class="min-w-[36px] min-h-[36px] md:min-w-[32px] md:min-h-[32px] flex items-center justify-center rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 text-xs md:text-sm transition-colors"><i class="fa-solid fa-copy"></i></button>
+            <button id="btn-download" title="Download" class="min-w-[36px] min-h-[36px] md:min-w-[32px] md:min-h-[32px] flex items-center justify-center rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 text-xs md:text-sm transition-colors"><i class="fa-solid fa-download"></i></button>
+            <button id="btn-settings" title="Settings" class="min-w-[36px] min-h-[36px] md:min-w-[32px] md:min-h-[32px] flex items-center justify-center rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 text-xs md:text-sm transition-colors"><i class="fa-solid fa-gear"></i></button>
+            <button id="btn-help" title="Help (? key)" class="min-w-[36px] min-h-[36px] md:min-w-[32px] md:min-h-[32px] flex items-center justify-center rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 text-xs md:text-sm transition-colors"><i class="fa-solid fa-circle-question"></i></button>
+        </header>
+
+        <!-- TOOLBAR -->
+        <nav id="app-toolbar" class="flex-shrink-0 h-9 md:h-10 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center px-2 gap-1 overflow-x-auto z-10">
+<button id="btn-beautify" title="Beautify" class="min-h-[32px] px-2 text-xxs md:text-xs rounded-md bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 whitespace-nowrap transition-colors flex items-center gap-1"><i class="fa-solid fa-align-left"></i><span class="hidden sm:inline">Beautify</span></button>
+            <button id="btn-compact" title="Compact" class="min-h-[32px] px-2 text-xxs md:text-xs rounded-md bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 whitespace-nowrap transition-colors flex items-center gap-1"><i class="fa-solid fa-compress"></i><span class="hidden sm:inline">Compact</span></button>
+            <span class="w-px h-5 bg-gray-300 dark:bg-gray-600 mx-0.5"></span>
+            <button id="btn-search-toggle" title="Search" class="min-h-[32px] px-2 text-xxs md:text-xs rounded-md bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 whitespace-nowrap transition-colors flex items-center gap-1"><i class="fa-solid fa-magnifying-glass"></i><span class="hidden sm:inline">Search</span></button>
+            <button id="btn-undo" title="Undo" class="min-h-[32px] px-2 text-xxs md:text-xs rounded-md bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 whitespace-nowrap transition-colors flex items-center gap-1"><i class="fa-solid fa-undo"></i></button>
+            <button id="btn-redo" title="Redo" class="min-h-[32px] px-2 text-xxs md:text-xs rounded-md bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 whitespace-nowrap transition-colors flex items-center gap-1"><i class="fa-solid fa-redo"></i></button>
+            <span class="w-px h-5 bg-gray-300 dark:bg-gray-600 mx-0.5"></span>
+            <button id="btn-tools-toggle" title="Tools" class="min-h-[32px] px-2 text-xxs md:text-xs rounded-md bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 whitespace-nowrap transition-colors flex items-center gap-1"><i class="fa-solid fa-toolbox"></i><span class="hidden sm:inline">Tools</span></button>
+            <span class="hidden md:flex items-center gap-1 ml-1">
+                <button id="btn-wrap-object" title="Wrap in Object" class="min-h-[32px] px-2 text-xxs rounded-md bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 whitespace-nowrap transition-colors"><i class="fa-solid fa-braces"></i></button>
+                <button id="btn-wrap-array" title="Wrap in Array" class="min-h-[32px] px-2 text-xxs rounded-md bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 whitespace-nowrap transition-colors"><i class="fa-solid fa-brackets"></i></button>
+                <select id="select-type-cast" title="Type Cast" class="min-h-[32px] px-1 text-xxs rounded-md bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100">
+                    <option value="">Cast...</option>
+                    <option value="string">String</option>
+                    <option value="number">Number</option>
+                    <option value="boolean">Boolean</option>
+                    <option value="null">Null</option>
+                    <option value="object">Object</option>
+                    <option value="array">Array</option>
+                </select>
+            </span>
+            <span class="flex-1"></span>
+            <span class="flex md:hidden gap-1">
+                <button id="btn-mobile-tree" title="Tree View" class="min-h-[32px] min-w-[40px] px-1 text-xxs rounded-md bg-blue-100 dark:bg-blue-900 border border-blue-300 dark:border-blue-700 font-medium transition-colors flex items-center justify-center gap-1"><i class="fa-solid fa-sitemap"></i></button>
+                <button id="btn-mobile-text" title="Text View" class="min-h-[32px] min-w-[40px] px-1 text-xxs rounded-md bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 font-medium transition-colors flex items-center justify-center gap-1"><i class="fa-solid fa-code"></i></button>
+            </span>
+        </nav>
+
+        <!-- MAIN EDITOR AREA -->
+        <main id="editor-area" class="flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden relative">
+            <!-- TEXT EDITOR PANE -->
+            <div id="text-pane" class="flex-1 min-h-0 flex flex-col overflow-hidden border-r border-gray-200 dark:border-gray-700">
+                <div class="flex-shrink-0 h-6 bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center px-2 text-xxs font-medium text-gray-500 dark:text-gray-400 gap-1">
+                    <i class="fa-solid fa-code"></i> JSON Text
+                </div>
+                <div id="text-editor-container" class="flex-1 min-h-0 relative overflow-hidden">
+                    <textarea id="raw-textarea" class="absolute inset-0 w-full h-full p-2 md:p-3 text-xs md:text-sm outline-none border-none z-10 bg-transparent overflow-auto" spellcheck="false" placeholder="Paste or type JSON here..."></textarea>
+                    <pre id="syntax-overlay" class="absolute inset-0 p-2 md:p-3 text-xs md:text-sm overflow-auto m-0"><code id="syntax-code"></code></pre>
+                </div>
+            </div>
+
+            <!-- TREE VIEW PANE -->
+            <div id="tree-pane" class="flex-1 min-h-0 flex flex-col overflow-hidden">
+                <div class="flex-shrink-0 h-6 bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center px-2 text-xxs font-medium text-gray-500 dark:text-gray-400 gap-1">
+                    <i class="fa-solid fa-sitemap"></i> Tree View
+                </div>
+                <div id="tree-view" class="flex-1 min-h-0 overflow-y-auto overflow-x-auto p-1 md:p-2 text-xs md:text-sm">
+                    <div id="tree-root" class="min-h-full"></div>
+                </div>
+            </div>
+        </main>
+
+        <!-- SEARCH PANEL (hidden by default) -->
+        <div id="search-panel" class="flex-shrink-0 hidden bg-yellow-50 dark:bg-yellow-950/60 border-t border-yellow-300 dark:border-yellow-700 px-3 py-2 flex items-center gap-2 z-10">
+            <i class="fa-solid fa-magnifying-glass text-yellow-600 dark:text-yellow-400 text-xs"></i>
+            <input id="search-input" type="text" placeholder="Search keys & values..." class="flex-1 min-w-0 px-2 py-1 text-xs rounded border border-yellow-300 dark:border-yellow-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none focus:ring-1 focus:ring-yellow-400">
+            <label class="flex items-center gap-1 text-xxs whitespace-nowrap cursor-pointer text-gray-700 dark:text-gray-300">
+                <input type="checkbox" id="search-jsonpath" class="w-3 h-3"> JSONPath
+            </label>
+            <button id="btn-search-clear" class="min-w-[28px] min-h-[28px] flex items-center justify-center rounded text-xxs hover:bg-yellow-200 dark:hover:bg-yellow-800 transition-colors"><i class="fa-solid fa-xmark"></i></button>
+            <span id="search-count" class="text-xxs text-gray-500 dark:text-gray-400 whitespace-nowrap"></span>
+        </div>
+
+        <!-- STATUS BAR -->
+        <footer id="status-bar" class="flex-shrink-0 h-6 bg-gray-200 dark:bg-gray-800 border-t border-gray-300 dark:border-gray-700 flex items-center px-2 text-xxs gap-2 z-20">
+            <span id="status-icon" class="flex items-center gap-1 min-w-0">
+                <i class="fa-solid fa-circle-check text-green-600 dark:text-green-400 text-[10px]"></i>
+                <span id="status-text" class="truncate">Valid JSON</span>
+            </span>
+            <span class="flex-1"></span>
+            <span id="status-size" class="text-gray-500 dark:text-gray-400 whitespace-nowrap">0 B</span>
+        </footer>
+    </div>
+
+    <!-- ========== HIDDEN INPUTS ========== -->
+    <input type="file" id="file-input" accept=".json,.json5,.txt" class="hidden">
+
+    <!-- ========== DROP OVERLAY ========== -->
+    <div id="drop-overlay" class="fixed inset-0 z-50 hidden bg-blue-500/20 dark:bg-blue-400/15 backdrop-blur-sm flex items-center justify-center pointer-events-none">
+        <div class="bg-white dark:bg-gray-900 border-4 border-dashed border-blue-400 dark:border-blue-500 rounded-2xl px-8 py-6 shadow-2xl text-center">
+            <i class="fa-solid fa-cloud-arrow-down text-4xl text-blue-500 dark:text-blue-400 mb-3 block"></i>
+            <p class="text-sm font-semibold text-gray-800 dark:text-gray-200">Drop JSON files here</p>
+            <p class="text-xxs text-gray-500 dark:text-gray-400">.json, .json5, .txt</p>
+        </div>
+    </div>
+
+    <!-- ========== URL IMPORT MODAL ========== -->
+    <div id="url-import-modal" class="fixed inset-0 z-50 hidden bg-black/40 flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-sm p-4 border border-gray-300 dark:border-gray-700">
+            <h3 class="text-sm font-semibold mb-3 flex items-center gap-2"><i class="fa-solid fa-link text-blue-500"></i> Import from URL</h3>
+            <input id="url-import-input" type="url" placeholder="https://api.example.com/data.json" class="w-full px-3 py-2 text-xs rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-400 mb-3">
+            <div class="flex gap-2 justify-end">
+                <button id="btn-url-cancel" class="px-3 py-1.5 text-xs rounded-md bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">Cancel</button>
+                <button id="btn-url-fetch" class="px-3 py-1.5 text-xs rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors">Fetch</button>
+            </div>
+            <p id="url-import-error" class="text-xxs text-red-500 mt-2 hidden"></p>
+        </div>
+    </div>
+
+    <!-- ========== SETTINGS DRAWER ========== -->
+    <div id="settings-drawer" class="fixed inset-y-0 right-0 z-50 w-72 max-w-[85vw] bg-white dark:bg-gray-900 shadow-2xl border-l border-gray-300 dark:border-gray-700 transform translate-x-full transition-transform duration-200 flex flex-col">
+        <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+            <h3 class="text-sm font-semibold flex items-center gap-2"><i class="fa-solid fa-gear text-gray-500"></i> Settings</h3>
+            <button id="btn-settings-close" class="min-w-[32px] min-h-[32px] flex items-center justify-center rounded-md hover:bg-gray-200 dark:hover:bg-gray-700"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-4 space-y-4">
+            <div class="flex items-center justify-between">
+                <span class="text-sm">Dark Mode</span>
+                <button id="btn-dark-toggle" class="w-12 h-6 rounded-full bg-gray-300 dark:bg-blue-600 relative transition-colors">
+                    <span id="dark-toggle-knob" class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform dark:translate-x-6"></span>
+                </button>
+            </div>
+            <div class="text-xxs text-gray-500 dark:text-gray-400 space-y-1">
+                <p>Editor settings are saved locally.</p>
+                <p>Keyboard shortcut: <kbd class="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded">?</kbd> for help</p>
+            </div>
+        </div>
+    </div>
+    <div id="settings-backdrop" class="fixed inset-0 z-40 hidden bg-black/30" onclick=""></div>
+
+    <!-- ========== TOOLS DRAWER ========== -->
+    <div id="tools-drawer" class="fixed inset-y-0 right-0 z-50 w-80 max-w-[90vw] bg-white dark:bg-gray-900 shadow-2xl border-l border-gray-300 dark:border-gray-700 transform translate-x-full transition-transform duration-200 flex flex-col">
+        <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+            <h3 class="text-sm font-semibold flex items-center gap-2"><i class="fa-solid fa-toolbox text-amber-500"></i> Tools</h3>
+            <button id="btn-tools-close" class="min-w-[32px] min-h-[32px] flex items-center justify-center rounded-md hover:bg-gray-200 dark:hover:bg-gray-700"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-4 space-y-4">
+            <div>
+                <h4 class="text-xs font-semibold mb-2 flex items-center gap-1"><i class="fa-solid fa-server"></i> Mock Server</h4>
+                <button id="btn-mock-generate" class="text-xxs px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors mb-2">Generate Mock Endpoint</button>
+                <pre id="mock-server-output" class="text-xxs bg-gray-100 dark:bg-gray-800 p-2 rounded-md max-h-32 overflow-auto border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300"></pre>
+            </div>
+            <div>
+                <h4 class="text-xs font-semibold mb-2 flex items-center gap-1"><i class="fa-solid fa-code"></i> Scripts</h4>
+                <textarea id="script-input" rows="4" placeholder="// data = parsed JSON; return transformed data;" class="w-full text-xxs p-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-mono outline-none focus:ring-1 focus:ring-blue-400 resize-none"></textarea>
+                <button id="btn-script-run" class="text-xxs px-2 py-1 rounded bg-green-600 text-white hover:bg-green-700 transition-colors mt-1">Run Script</button>
+                <pre id="script-output" class="text-xxs bg-gray-100 dark:bg-gray-800 p-2 rounded-md max-h-24 overflow-auto border border-gray-200 dark:border-gray-700 mt-1 text-gray-700 dark:text-gray-300"></pre>
+            </div>
+        </div>
+    </div>
+    <div id="tools-backdrop" class="fixed inset-0 z-40 hidden bg-black/30" onclick=""></div>
+
+    <!-- ========== HELP MODAL ========== -->
+    <div id="help-modal" class="fixed inset-0 z-50 hidden bg-black/40 flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-md p-5 border border-gray-300 dark:border-gray-700 max-h-[80vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-semibold flex items-center gap-2"><i class="fa-solid fa-keyboard"></i> Shortcuts</h3>
+                <button id="btn-help-close" class="min-w-[32px] min-h-[32px] flex items-center justify-center rounded-md hover:bg-gray-200 dark:hover:bg-gray-700"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <table class="w-full text-xs">
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                    <tr><td class="py-1.5 pr-3"><kbd class="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xxs">Ctrl+B</kbd></td><td class="py-1.5">Beautify JSON</td></tr>
+                    <tr><td class="py-1.5 pr-3"><kbd class="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xxs">Ctrl+Shift+B</kbd></td><td class="py-1.5">Compact JSON</td></tr>
+                    <tr><td class="py-1.5 pr-3"><kbd class="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xxs">Ctrl+F</kbd></td><td class="py-1.5">Toggle Search</td></tr>
+                    <tr><td class="py-1.5 pr-3"><kbd class="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xxs">Ctrl+Z</kbd></td><td class="py-1.5">Undo</td></tr>
+                    <tr><td class="py-1.5 pr-3"><kbd class="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xxs">Ctrl+Y</kbd></td><td class="py-1.5">Redo</td></tr>
+                    <tr><td class="py-1.5 pr-3"><kbd class="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xxs">Ctrl+S</kbd></td><td class="py-1.5">Download JSON</td></tr>
+                    <tr><td class="py-1.5 pr-3"><kbd class="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xxs">?</kbd></td><td class="py-1.5">Show this help</td></tr>
+                    <tr><td class="py-1.5 pr-3"><kbd class="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xxs">Escape</kbd></td><td class="py-1.5">Close panels/modals</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ========== NODE EDITOR PANEL (bottom sheet on mobile) ========== -->
+    <div id="node-editor-panel" class="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-900 border-t border-gray-300 dark:border-gray-700 shadow-2xl transform translate-y-full transition-transform duration-200 max-h-[45vh] flex flex-col rounded-t-xl">
+        <div class="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+            <span class="text-xs font-semibold flex items-center gap-2"><i class="fa-solid fa-pen-to-square text-blue-500"></i> Edit Node</span>
+            <button id="btn-node-editor-close" class="min-w-[32px] min-h-[32px] flex items-center justify-center rounded-md hover:bg-gray-200 dark:hover:bg-gray-700"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <textarea id="node-editor-textarea" class="flex-1 min-h-[80px] p-3 text-xs font-mono outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 resize-none border-none" placeholder="Node value..."></textarea>
+        <div class="flex gap-2 px-4 py-2 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+            <button id="btn-node-editor-save" class="px-3 py-1.5 text-xs rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors">Save</button>
+            <button id="btn-node-editor-cancel" class="px-3 py-1.5 text-xs rounded-md bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">Cancel</button>
+        </div>
+    </div>
+
+    <!-- ========== ARRAY TABLE MODAL ========== -->
+    <div id="array-table-modal" class="fixed inset-0 z-50 hidden bg-black/40 flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col border border-gray-300 dark:border-gray-700">
+            <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+                <h3 class="text-sm font-semibold flex items-center gap-2"><i class="fa-solid fa-table"></i> Array Table Editor</h3>
+                <button id="btn-array-table-close" class="min-w-[32px] min-h-[32px] flex items-center justify-center rounded-md hover:bg-gray-200 dark:hover:bg-gray-700"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="array-table-container" class="flex-1 overflow-auto p-2">
+                <table id="array-table" class="w-full text-xs border-collapse"></table>
+            </div>
+            <div class="flex gap-2 px-4 py-2 border-t border-gray-200 dark:border-gray-700 flex-shrink-0 justify-end">
+                <button id="btn-array-table-save" class="px-3 py-1.5 text-xs rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors">Apply Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== SCRIPTS ========== -->
+    <script>
+        (function() {
+            // ──────────────────────────────────────
+            // MODULE: EventBus
+            // ──────────────────────────────────────
+            const EventBus = (function() {
+                const listeners = {};
+                return {
+                    on(event, callback) {
+                        if (!listeners[event]) listeners[event] = [];
+                        listeners[event].push(callback);
+                        return () => this.off(event, callback);
+                    },
+                    off(event, callback) {
+                        if (!listeners[event]) return;
+                        listeners[event] = listeners[event].filter(cb => cb !== callback);
+                    },
+                    emit(event, data) {
+                        if (!listeners[event]) return;
+                        listeners[event].forEach(cb => {
+                            try { cb(data); } catch (e) { console.error('EventBus error:', event, e); }
+                        });
+                    }
+                };
+            })();
+
+            // ──────────────────────────────────────
+            // MODULE: StateManager
+            // ──────────────────────────────────────
+            const StateManager = (function() {
+                let state = {
+                    data: null,
+                    rawText: '',
+                    selection: null, // { path: [], key: null, value: null }
+                    validation: { valid: true, error: null, errorLine: -1 },
+                    darkMode: true,
+                    searchResults: [],
+                    undoStack: [],
+                    redoStack: [],
+                    isUserEditing: false,
+                };
+                const subscribers = [];
+
+                function pushUndo() {
+                    if (state.rawText && state.validation.valid) {
+                        state.undoStack.push(state.rawText);
+                        if (state.undoStack.length > 100) state.undoStack.shift();
+                        state.redoStack = [];
+                    }
+                }
+
+                return {
+                    getState() { return { ...state, data: state.data ? JSON.parse(JSON.stringify(state.data)) : null }; },
+                    getRawState() { return state; },
+                    updateState(partial, options = {}) {
+                        const prev = state;
+                        if (options.pushUndo && partial.rawText && partial.rawText !== state.rawText && state
+                            .validation.valid && state.rawText) {
+                            pushUndo();
+                        }
+                        state = { ...state, ...partial };
+                        if (partial.data !== undefined && partial.rawText === undefined) {
+                            // data changed externally, don't auto-update rawText here
+                        }
+                        subscribers.forEach(fn => {
+                            try { fn(state, prev); } catch (e) { console.error('State subscriber error:', e); }
+                        });
+                        EventBus.emit('stateChanged', { state, prev });
+                    },
+                    subscribe(fn) { subscribers.push(fn); },
+                    pushUndoSnapshot() { pushUndo(); },
+                    undo() {
+                        if (state.undoStack.length === 0) return false;
+                        state.redoStack.push(state.rawText);
+                        const text = state.undoStack.pop();
+                        this.updateState({ rawText: text }, { pushUndo: false });
+                        EventBus.emit('text:changed', { text, source: 'undo' });
+                        return true;
+                    },
+                    redo() {
+                        if (state.redoStack.length === 0) return false;
+                        state.undoStack.push(state.rawText);
+                        const text = state.redoStack.pop();
+                        this.updateState({ rawText: text }, { pushUndo: false });
+                        EventBus.emit('text:changed', { text, source: 'redo' });
+                        return true;
+                    },
+                };
+            })();
+
+            // ──────────────────────────────────────
+            // MODULE: DataManager (with JSON5 tolerant parser)
+            // ──────────────────────────────────────
+            const DataManager = (function() {
+                function tolerateJSON5(text) {
+                    let cleaned = text;
+                    // Remove single-line comments
+                    cleaned = cleaned.replace(/\/\/.*$/gm, '');
+                    // Remove multi-line comments
+                    cleaned = cleaned.replace(/\/\*[\s\S]*?\*\//g, '');
+                    // Handle single-quoted strings (simple approach)
+                    cleaned = cleaned.replace(/'([^'\\]*(\\.[^'\\]*)*)'/g, function(match) {
+                        const inner = match.slice(1, -1).replace(/"/g, '\\"');
+                        return '"' + inner + '"';
+                    });
+                    // Handle unquoted keys (simple approach for common cases)
+                    cleaned = cleaned.replace(/([{,]\s*)([a-zA-Z_$][a-zA-Z0-9_$]*)\s*:/g, '$1"$2":');
+                    // Remove trailing commas before ] or }
+                    cleaned = cleaned.replace(/,(\s*[}\]])/g, '$1');
+                    // Remove trailing comma at end of input
+                    cleaned = cleaned.replace(/,\s*$/g, '');
+                    return cleaned;
+                }
+
+                return {
+                    parse(text, options = {}) {
+                        try {
+                            const data = JSON.parse(text);
+                            return { data, error: null, errorLine: -1 };
+                        } catch (e) {
+                            if (options.tolerant !== false) {
+                                try {
+                                    const cleaned = tolerateJSON5(text);
+                                    const data = JSON.parse(cleaned);
+                                    return { data, error: null, errorLine: -1, wasCleaned: true };
+                                } catch (e2) {
+                                    const msg = e2.message || 'Parse error';
+                                    const lineMatch = msg.match(/position\s+(\d+)/i) || msg.match(/line\s+(\d+)/i);
+                                    let errorLine = -1;
+                                    if (lineMatch) {
+                                        const pos = parseInt(lineMatch[1]);
+                                        errorLine = text.substring(0, pos).split('\n').length;
+                                    }
+                                    return { data: null, error: msg, errorLine };
+                                }
+                            }
+                            const msg = e.message || 'Parse error';
+                            const lineMatch = msg.match(/position\s+(\d+)/i) || msg.match(/line\s+(\d+)/i);
+                            let errorLine = -1;
+                            if (lineMatch) {
+                                const pos = parseInt(lineMatch[1]);
+                                errorLine = text.substring(0, pos).split('\n').length;
+                            }
+                            return { data: null, error: msg, errorLine };
+                        }
+                    },
+                    stringify(data, space) {
+                        if (space === undefined || space === null) return JSON.stringify(data);
+                        if (space === 'compact' || space === 0 || space === '') return JSON.stringify(data);
+                        return JSON.stringify(data, null, typeof space === 'number' ? space : 2);
+                    },
+                    validate(text) {
+                        const result = this.parse(text);
+                        return { valid: result.error === null, error: result.error, errorLine: result.errorLine };
+                    },
+                    getSize(data) {
+                        const str = JSON.stringify(data);
+                        const bytes = new Blob([str]).size;
+                        if (bytes < 1024) return bytes + ' B';
+                        if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+                        return (bytes / 1048576).toFixed(2) + ' MB';
+                    },
+                };
+            })();
+
+            // ──────────────────────────────────────
+            // MODULE: FileManager
+            // ──────────────────────────────────────
+            const FileManager = (function() {
+                function readFile(file) {
+                    return new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(reader.result);
+                        reader.onerror = () => reject(new Error('Failed to read file'));
+                        reader.readAsText(file);
+                    });
+                }
+
+                const fileInput = document.getElementById('file-input');
+                const dropOverlay = document.getElementById('drop-overlay');
+                let dragCounter = 0;
+
+                document.addEventListener('dragenter', function(e) {
+                    e.preventDefault();
+                    dragCounter++;
+                    if (dragCounter === 1 && dropOverlay) {
+                        dropOverlay.classList.remove('hidden');
+                    }
+                });
+                document.addEventListener('dragleave', function(e) {
+                    e.preventDefault();
+                    dragCounter--;
+                    if (dragCounter <= 0 && dropOverlay) {
+                        dropOverlay.classList.add('hidden');
+                        dragCounter = 0;
+                    }
+                });
+                document.addEventListener('dragover', function(e) { e.preventDefault(); });
+                document.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    dragCounter = 0;
+                    if (dropOverlay) dropOverlay.classList.add('hidden');
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        const file = files[0];
+                        if (file.name.match(/\.(json|json5|txt)$/i) || file.type === 'application/json') {
+                            readFile(file).then(text => {
+                                EventBus.emit('file:loaded', { text, filename: file.name });
+                            }).catch(err => {
+                                EventBus.emit('error', { message: 'File read error: ' + err.message });
+                            });
+                        }
+                    }
+                });
+
+                fileInput.addEventListener('change', function() {
+                    if (this.files.length > 0) {
+                        readFile(this.files[0]).then(text => {
+                            EventBus.emit('file:loaded', { text, filename: this.files[0].name });
+                        }).catch(err => {
+                            EventBus.emit('error', { message: 'File read error: ' + err.message });
+                        });
+                        this.value = '';
+                    }
+                });
+
+                return {
+                    triggerFileInput() { fileInput.click(); },
+                    downloadJSON(text, filename = 'data.json') {
+                        const blob = new Blob([text], { type: 'application/json' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                    },
+                };
+            })();
+
+            // ──────────────────────────────────────
+            // MODULE: ClipboardManager
+            // ──────────────────────────────────────
+            const ClipboardManager = (function() {
+                return {
+                    async readText() {
+                        try {
+                            return await navigator.clipboard.readText();
+                        } catch (e) {
+                            throw new Error('Clipboard read denied');
+                        }
+                    },
+                    async writeText(text) {
+                        try {
+                            await navigator.clipboard.writeText(text);
+                            return true;
+                        } catch (e) {
+                            throw new Error('Clipboard write denied');
+                        }
+                    },
+                };
+            })();
+
+            // ──────────────────────────────────────
+            // MODULE: SearchEngine
+            // ──────────────────────────────────────
+            const SearchEngine = (function() {
+                function simpleSearch(data, query, path = '$', results = []) {
+                    if (!query) return results;
+                    const q = query.toLowerCase();
+                    if (typeof data === 'object' && data !== null) {
+                        if (Array.isArray(data)) {
+                            data.forEach((item, i) => {
+                                const currentPath = path + '[' + i + ']';
+                                if (typeof item === 'string' && item.toLowerCase().includes(q)) {
+                                    results.push({ path: currentPath, value: item, type: 'value' });
+                                } else if (typeof item === 'number' && String(item).includes(q)) {
+                                    results.push({ path: currentPath, value: item, type: 'value' });
+                                } else if (typeof item === 'boolean' && String(item).includes(q)) {
+                                    results.push({ path: currentPath, value: item, type: 'value' });
+                                }
+                                simpleSearch(item, query, currentPath, results);
+                            });
+                        } else {
+                            Object.keys(data).forEach(key => {
+                                const currentPath = path + '.' + key;
+                                if (key.toLowerCase().includes(q)) {
+                                    results.push({ path: currentPath, key: key, type: 'key' });
+                                }
+                                const val = data[key];
+                                if (typeof val === 'string' && val.toLowerCase().includes(q)) {
+                                    results.push({ path: currentPath, value: val, type: 'value' });
+                                } else if (typeof val === 'number' && String(val).includes(q)) {
+                                    results.push({ path: currentPath, value: val, type: 'value' });
+                                } else if (typeof val === 'boolean' && String(val).includes(q)) {
+                                    results.push({ path: currentPath, value: val, type: 'value' });
+                                }
+                                simpleSearch(val, query, currentPath, results);
+                            });
+                        }
+                    }
+                    return results;
+                }
+
+                function evalJSONPath(data, expr) {
+                    // Simple JSONPath subset: $.key.subkey[index]
+                    if (!expr || !expr.startsWith('$')) return [];
+                    const parts = expr.replace(/^\$\.?/, '').split(/(?<=[^\\])\.|(?=\[)/);
+                    let current = data;
+                    const resolvedPath = ['$'];
+                    for (const part of parts) {
+                        if (!part) continue;
+                        let seg = part;
+                        if (seg.startsWith('[') && seg.endsWith(']')) {
+                            const idx = parseInt(seg.slice(1, -1));
+                            if (Array.isArray(current) && idx >= 0 && idx < current.length) {
+                                current = current[idx];
+                                resolvedPath.push('[' + idx + ']');
+                            } else return [];
+                        } else {
+                            seg = seg.replace(/\\\./g, '.');
+                            if (current && typeof current === 'object' && seg in current) {
+                                current = current[seg];
+                                resolvedPath.push(seg);
+                            } else return [];
+                        }
+                    }
+                    return [{ path: resolvedPath.join('.').replace(/\.\[/g, '['), value: current, type: 'value' }];
+                }
+
+                return {
+                    search(data, query, useJSONPath = false) {
+                        if (!query) return [];
+                        if (useJSONPath) return evalJSONPath(data, query);
+                        return simpleSearch(data, query);
+                    },
+                };
+            })();
+
+            // ──────────────────────────────────────
+            // MODULE: TreeRenderer
+            // ──────────────────────────────────────
+            const TreeRenderer = (function() {
+                const treeRoot = document.getElementById('tree-root');
+                let expandedNodes = new Set();
+                let selectedPath = null;
+
+                function getTypeIcon(value) {
+                    if (value === null || value === undefined) return '<i class="fa-solid fa-circle text-gray-400 dark:text-gray-500 text-[10px]"></i>';
+                    if (typeof value === 'boolean') return value ?
+                        '<i class="fa-solid fa-toggle-on text-green-500 text-xs"></i>' :
+                        '<i class="fa-solid fa-toggle-off text-gray-400 text-xs"></i>';
+                    if (typeof value === 'number') return '<i class="fa-solid fa-hashtag text-amber-500 text-xs"></i>';
+                    if (typeof value === 'string') return '<i class="fa-solid fa-quote-left text-blue-500 text-xs"></i>';
+                    if (Array.isArray(value)) return '<i class="fa-solid fa-list text-orange-500 text-xs"></i>';
+                    if (typeof value === 'object') return '<i class="fa-solid fa-folder text-yellow-500 text-xs"></i>';
+                    return '<i class="fa-solid fa-circle text-gray-400 text-xs"></i>';
+                }
+
+                function getValuePreview(value) {
+                    if (value === null) return '<span class="text-gray-400 dark:text-gray-500 italic">null</span>';
+                    if (typeof value === 'boolean') return '<span class="text-purple-600 dark:text-purple-400">' + value +
+                        '</span>';
+                    if (typeof value === 'number') return '<span class="text-amber-600 dark:text-amber-400">' + value +
+                        '</span>';
+                    if (typeof value === 'string') {
+                        const truncated = value.length > 60 ? value.substring(0, 60) + '…' : value;
+                        const escaped = truncated.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                        return '<span class="text-green-600 dark:text-green-400">"' + escaped + '"</span>';
+                    }
+                    if (Array.isArray(value)) return '<span class="text-gray-500 dark:text-gray-400">[' + value.length +
+                        ']</span>';
+                    if (typeof value === 'object') return '<span class="text-gray-500 dark:text-gray-400">{' + Object.keys(
+                        value).length + '}</span>';
+                    return '';
+                }
+
+                function buildTreeHTML(data, path = '$', depth = 0, searchResults = []) {
+                    if (data === null || data === undefined) {
+                        const isMatch = searchResults.some(r => r.path === path);
+                        return '<span class="inline-flex items-center gap-1 ' + (isMatch ? 'tree-node-highlight rounded px-1' :
+                            '') + '">' + getTypeIcon(data) + getValuePreview(data) + '</span>';
+                    }
+                    if (typeof data !== 'object') {
+                        const isMatch = searchResults.some(r => r.path === path);
+                        return '<span class="inline-flex items-center gap-1 ' + (isMatch ? 'tree-node-highlight rounded px-1' :
+                            '') + '">' + getTypeIcon(data) + getValuePreview(data) + '</span>';
+                    }
+
+                    const isArray = Array.isArray(data);
+                    const entries = isArray ? data.map((v, i) => [i, v]) : Object.entries(data);
+                    const nodeKey = path;
+                    const isExpanded = expandedNodes.has(nodeKey) || depth < 2;
+                    const bracketOpen = isArray ? '[' : '{';
+                    const bracketClose = isArray ? ']' : '}';
+                    const countLabel = isArray ? data.length + ' items' : Object.keys(data).length + ' keys';
+
+                    let html = '<div class="tree-node" data-path="' + path.replace(/"/g,
+                        '&quot;') + '" data-depth="' + depth + '">';
+                    html += '<div class="flex items-center gap-0.5 py-0.5 hover:bg-gray-100 dark:hover:bg-gray-800/60 rounded group min-h-[28px] cursor-pointer">';
+                    // Indent
+                    for (let i = 0; i < depth; i++) {
+                        html +=
+                            '<span class="inline-block w-4 flex-shrink-0 tree-indent-guide" style="margin-left:2px;"></span>';
+                    }
+                    // Expand/collapse toggle
+                    html +=
+                        '<span class="inline-flex items-center justify-center w-4 h-4 flex-shrink-0 cursor-pointer expand-toggle text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" data-path="' +
+                        path.replace(/"/g, '&quot;') + '">';
+                    html += '<i class="fa-solid fa-caret-' + (isExpanded ? 'down' : 'right') +
+                        ' text-[10px]"></i></span>';
+                    // Type icon
+                    html += '<span class="flex-shrink-0">' + getTypeIcon(data) + '</span>';
+                    // Bracket open
+                    html += '<span class="text-gray-600 dark:text-gray-300 font-mono text-xs">' + bracketOpen +
+                        '</span>';
+                    if (!isExpanded) {
+                        html += '<span class="text-gray-400 dark:text-gray-500 text-xxs ml-1">' + countLabel +
+                            '</span>';
+                    }
+                    html += '<span class="text-gray-600 dark:text-gray-300 font-mono text-xs">' + bracketClose +
+                        '</span>';
+                    // Action buttons (on hover)
+                    html +=
+                        '<span class="ml-auto hidden group-hover:inline-flex gap-0.5 flex-shrink-0 pr-1">';
+                    html +=
+                        '<button class="btn-add-child text-xxs min-w-[22px] min-h-[22px] flex items-center justify-center rounded hover:bg-blue-200 dark:hover:bg-blue-800" title="Add child" data-path="' +
+                        path.replace(/"/g, '&quot;') + '"><i class="fa-solid fa-plus text-[9px]"></i></button>';
+                    html +=
+                        '<button class="btn-delete-node text-xxs min-w-[22px] min-h-[22px] flex items-center justify-center rounded hover:bg-red-200 dark:hover:bg-red-800" title="Delete" data-path="' +
+                        path.replace(/"/g, '&quot;') + '"><i class="fa-solid fa-trash-can text-[9px]"></i></button>';
+                    html += '</span>';
+                    html += '</div>';
+
+                    // Children
+                    if (isExpanded && entries.length > 0) {
+                        html += '<div class="tree-children" data-parent="' + path.replace(/"/g, '&quot;') + '">';
+                        entries.forEach(([key, value]) => {
+                            const childPath = isArray ? path + '[' + key + ']' : path + '.' + key;
+                            const isMatch = searchResults.some(r => r.path === childPath);
+                            html +=
+                                '<div class="flex items-center gap-0.5 py-0.5 hover:bg-gray-100 dark:hover:bg-gray-800/60 rounded group min-h-[28px] cursor-pointer tree-row ' +
+                                (isMatch ? 'tree-node-highlight' : '') + '" data-path="' + childPath.replace(
+                                    /"/g, '&quot;') + '" data-depth="' + (depth + 1) + '">';
+                            // Indent
+                            for (let i = 0; i < depth + 1; i++) {
+                                html +=
+                                    '<span class="inline-block w-4 flex-shrink-0 tree-indent-guide" style="margin-left:2px;"></span>';
+                            }
+                            // Key (if object)
+                            if (!isArray) {
+                                html +=
+                                    '<span class="text-pink-600 dark:text-pink-400 font-mono text-xs flex-shrink-0">"' +
+                                    String(key).replace(/&/g, '&amp;').replace(/</g, '&lt;') + '"</span>';
+                                html +=
+                                    '<span class="text-gray-500 dark:text-gray-400 flex-shrink-0">:</span>';
+                            } else {
+                                html +=
+                                    '<span class="text-gray-400 dark:text-gray-500 text-xxs flex-shrink-0 w-4 text-right">' +
+                                    key + '</span>';
+                            }
+                            // Value preview
+                            html += '<span class="flex items-center gap-1 min-w-0">';
+                            if (typeof value === 'object' && value !== null) {
+                                const childBracket = Array.isArray(value) ? '[' : '{';
+                                const childCount = Array.isArray(value) ? value.length + ' items' : Object.keys(
+                                    value).length + ' keys';
+                                const childPathEnc = childPath.replace(/"/g, '&quot;');
+                                const childExpanded = expandedNodes.has(childPath) || (depth + 1) < 2;
+                                html +=
+                                    '<span class="expand-toggle cursor-pointer text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 w-4 inline-flex items-center justify-center flex-shrink-0" data-path="' +
+                                    childPathEnc + '"><i class="fa-solid fa-caret-' + (childExpanded ?
+                                        'down' : 'right') + ' text-[10px]"></i></span>';
+                                html += getTypeIcon(value);
+                                html += '<span class="text-gray-600 dark:text-gray-300 font-mono text-xs">' +
+                                    childBracket + '</span>';
+                                if (!childExpanded) html +=
+                                    '<span class="text-gray-400 dark:text-gray-500 text-xxs">' + childCount +
+                                    '</span>';
+                                html += '<span class="text-gray-600 dark:text-gray-300 font-mono text-xs">' + (
+                                    childBracket === '[' ? ']' : '}') + '</span>';
+                            } else {
+                                html += getValuePreview(value);
+                            }
+                            html += '</span>';
+                            // Action buttons
+                            html +=
+                                '<span class="ml-auto hidden group-hover:inline-flex gap-0.5 flex-shrink-0 pr-1">';
+                            html +=
+                                '<button class="btn-edit-node text-xxs min-w-[22px] min-h-[22px] flex items-center justify-center rounded hover:bg-green-200 dark:hover:bg-green-800" title="Edit" data-path="' +
+                                childPath.replace(/"/g, '&quot;') + '"><i class="fa-solid fa-pen text-[9px]"></i></button>';
+                            html +=
+                                '<button class="btn-delete-node text-xxs min-w-[22px] min-h-[22px] flex items-center justify-center rounded hover:bg-red-200 dark:hover:bg-red-800" title="Delete" data-path="' +
+                                childPath.replace(/"/g, '&quot;') +
+                                '"><i class="fa-solid fa-trash-can text-[9px]"></i></button>';
+                            html += '</span>';
+                            html += '</div>';
+                            // Recursively render children if expanded
+                            if (typeof value === 'object' && value !== null && (expandedNodes.has(childPath) || (
+                                    depth + 1) < 2)) {
+                                html += buildTreeHTML(value, childPath, depth + 1, searchResults);
+                            }
+                        });
+                        html += '</div>';
+                    } else if (isExpanded && entries.length === 0) {
+                        html += '<div class="text-xxs text-gray-400 dark:text-gray-500 pl-' + ((depth + 1) * 4) +
+                            ' py-0.5">empty</div>';
+                    }
+                    html += '</div>';
+                    return html;
+                }
+
+                function render(data, searchResults = []) {
+                    if (!treeRoot) return;
+                    if (data === null || data === undefined) {
+                        treeRoot.innerHTML =
+                            '<div class="text-gray-400 dark:text-gray-500 text-xs p-4 text-center">No data loaded</div>';
+                        return;
+                    }
+                    const html = buildTreeHTML(data, '$', 0, searchResults);
+                    treeRoot.innerHTML = html;
+                    attachTreeEvents();
+                }
+
+                function attachTreeEvents() {
+                    if (!treeRoot) return;
+                    // Expand/collapse
+                    treeRoot.querySelectorAll('.expand-toggle').forEach(el => {
+                        el.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            const path = this.getAttribute('data-path');
+                            if (expandedNodes.has(path)) {
+                                expandedNodes.delete(path);
+                            } else {
+                                expandedNodes.add(path);
+                            }
+                            const state = StateManager.getRawState();
+                            render(state.data, state.searchResults || []);
+                            if (selectedPath && treeRoot.querySelector('[data-path="' + selectedPath
+                                    .replace(/"/g, '\\"') + '"]')) {
+                                const selEl = treeRoot.querySelector('[data-path="' + selectedPath.replace(
+                                    /"/g, '\\"') + '"]');
+                                if (selEl) selEl.classList.add('ring-2', 'ring-blue-400',
+                                    'dark:ring-blue-500');
+                            }
+                        });
+                    });
+                    // Select node
+                    treeRoot.querySelectorAll('.tree-row').forEach(el => {
+                        el.addEventListener('click', function(e) {
+                            if (e.target.closest('.expand-toggle') || e.target.closest('button'))
+                                return;
+                            const path = this.getAttribute('data-path');
+                            selectNode(path);
+                        });
+                    });
+                    // Add child button
+                    treeRoot.querySelectorAll('.btn-add-child').forEach(btn => {
+                        btn.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            const path = this.getAttribute('data-path');
+                            addChildNode(path);
+                        });
+                    });
+                    // Delete button
+                    treeRoot.querySelectorAll('.btn-delete-node').forEach(btn => {
+                        btn.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            const path = this.getAttribute('data-path');
+                            deleteNode(path);
+                        });
+                    });
+                    // Edit button
+                    treeRoot.querySelectorAll('.btn-edit-node').forEach(btn => {
+                        btn.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            const path = this.getAttribute('data-path');
+                            editNodeValue(path);
+                        });
+                    });
+                }
+
+                function selectNode(path) {
+                    selectedPath = path;
+                    treeRoot.querySelectorAll('.tree-row').forEach(el => el.classList.remove('ring-2', 'ring-blue-400',
+                        'dark:ring-blue-500'));
+                    const el = treeRoot.querySelector('[data-path="' + path.replace(/"/g, '\\"') + '"]');
+                    if (el) el.classList.add('ring-2', 'ring-blue-400', 'dark:ring-blue-500');
+                    // Get value at path
+                    const state = StateManager.getRawState();
+                    const value = getValueAtPath(state.data, path);
+                    StateManager.updateState({ selection: { path: path, value: value } });
+                    EventBus.emit('node:selected', { path, value });
+                }
+
+                function getValueAtPath(data, path) {
+                    if (path === '$') return data;
+                    const parts = parsePath(path);
+                    let current = data;
+                    for (const part of parts) {
+                        if (current === null || current === undefined) return undefined;
+                        if (typeof part === 'number') {
+                            if (Array.isArray(current)) current = current[part];
+                            else return undefined;
+                        } else {
+                            if (typeof current === 'object') current = current[part];
+                            else return undefined;
+                        }
+                    }
+                    return current;
+                }
+
+                function setValueAtPath(data, path, newValue) {
+                    if (path === '$') return newValue;
+                    const parts = parsePath(path);
+                    const cloned = JSON.parse(JSON.stringify(data));
+                    let current = cloned;
+                    for (let i = 0; i < parts.length - 1; i++) {
+                        const part = parts[i];
+                        if (typeof part === 'number') {
+                            if (!Array.isArray(current)) return data;
+                            current = current[part];
+                        } else {
+                            if (typeof current !== 'object' || current === null) return data;
+                            current = current[part];
+                        }
+                    }
+                    const lastPart = parts[parts.length - 1];
+                    if (typeof lastPart === 'number') {
+                        if (Array.isArray(current)) current[lastPart] = newValue;
+                    } else {
+                        if (typeof current === 'object' && current !== null) current[lastPart] = newValue;
+                    }
+                    return cloned;
+                }
+
+                function deleteValueAtPath(data, path) {
+                    if (path === '$') return null;
+                    const parts = parsePath(path);
+                    const cloned = JSON.parse(JSON.stringify(data));
+                    let current = cloned;
+                    for (let i = 0; i < parts.length - 1; i++) {
+                        const part = parts[i];
+                        if (typeof part === 'number') {
+                            if (!Array.isArray(current)) return data;
+                            current = current[part];
+                        } else {
+                            if (typeof current !== 'object' || current === null) return data;
+                            current = current[part];
+                        }
+                    }
+                    const lastPart = parts[parts.length - 1];
+                    if (typeof lastPart === 'number' && Array.isArray(current)) {
+                        current.splice(lastPart, 1);
+                    } else if (typeof current === 'object' && current !== null) {
+                        delete current[lastPart];
+                    }
+                    return cloned;
+                }
+
+                function parsePath(path) {
+                    if (path === '$') return [];
+                    const stripped = path.replace(/^\$\.?/, '');
+                    const parts = [];
+                    let current = '';
+                    let inBracket = false;
+                    for (let i = 0; i < stripped.length; i++) {
+                        const ch = stripped[i];
+                        if (ch === '[' && !inBracket) {
+                            if (current) parts.push(current);
+                            current = '';
+                            inBracket = true;
+                        } else if (ch === ']' && inBracket) {
+                            parts.push(parseInt(current) || current);
+                            current = '';
+                            inBracket = false;
+                        } else if (ch === '.' && !inBracket) {
+                            if (current) parts.push(current);
+                            current = '';
+                        } else {
+                            current += ch;
+                        }
+                    }
+                    if (current) parts.push(current);
+                    return parts.map(p => {
+                        const num = parseInt(p);
+                        return isNaN(num) ? p : num;
+                    });
+                }
+
+                function addChildNode(path) {
+                    const state = StateManager.getRawState();
+                    const parent = getValueAtPath(state.data, path);
+                    let newData;
+                    if (Array.isArray(parent)) {
+                        const cloned = JSON.parse(JSON.stringify(state.data));
+                        const target = getValueAtPath(cloned, path);
+                        target.push(null);
+                        newData = cloned;
+                    } else if (typeof parent === 'object' && parent !== null) {
+                        const cloned = JSON.parse(JSON.stringify(state.data));
+                        const target = getValueAtPath(cloned, path);
+                        const newKey = 'newKey_' + Object.keys(target).length;
+                        target[newKey] = null;
+                        newData = cloned;
+                    } else {
+                        return;
+                    }
+                    const newText = DataManager.stringify(newData, 2);
+                    StateManager.updateState({ data: newData, rawText: newText, validation: { valid: true, error: null,
+                            errorLine: -1 } }, { pushUndo: true });
+                    EventBus.emit('data:updated', { data: newData });
+                }
+
+                function deleteNode(path) {
+                    if (path === '$') return;
+                    const state = StateManager.getRawState();
+                    const newData = deleteValueAtPath(state.data, path);
+                    if (newData === state.data) return;
+                    const newText = DataManager.stringify(newData, 2);
+                    StateManager.updateState({ data: newData, rawText: newText, validation: { valid: true, error: null,
+                            errorLine: -1 } }, { pushUndo: true });
+                    if (selectedPath === path) selectedPath = null;
+                    EventBus.emit('data:updated', { data: newData });
+                }
+
+                function editNodeValue(path) {
+                    const state = StateManager.getRawState();
+                    const value = getValueAtPath(state.data, path);
+                    selectedPath = path;
+                    StateManager.updateState({ selection: { path, value } });
+                    EventBus.emit('node:edit-requested', { path, value });
+                }
+
+                function updateNodeValue(path, newValue) {
+                    const state = StateManager.getRawState();
+                    let parsed;
+                    try {
+                        parsed = JSON.parse(newValue);
+                    } catch (e) {
+                        parsed = newValue; // treat as string
+                    }
+                    const newData = setValueAtPath(state.data, path, parsed);
+                    const newText = DataManager.stringify(newData, 2);
+                    StateManager.updateState({ data: newData, rawText: newText, validation: { valid: true, error: null,
+                            errorLine: -1 } }, { pushUndo: true });
+                    EventBus.emit('data:updated', { data: newData });
+                }
+
+                EventBus.on('stateChanged', function({ state }) {
+                    if (!state.isUserEditing) {
+                        render(state.data, state.searchResults || []);
+                    }
+                });
+                EventBus.on('search:results', function({ results }) {
+                    const state = StateManager.getRawState();
+                    render(state.data, results);
+                });
+                EventBus.on('search:cleared', function() {
+                    const state = StateManager.getRawState();
+                    render(state.data, []);
+                });
+
+                return {
+                    render,
+                    selectNode,
+                    getValueAtPath,
+                    updateNodeValue,
+                    deleteNode,
+                    addChildNode,
+                    getSelectedPath() { return selectedPath; },
+                    expandAll() {
+                        const state = StateManager.getRawState();
+                        function collectPaths(data, path) {
+                            expandedNodes.add(path);
+                            if (typeof data === 'object' && data !== null) {
+                                const entries = Array.isArray(data) ? data.map((v, i) => [i, v]) : Object.entries(
+                                    data);
+                                entries.forEach(([k, v]) => {
+                                    const cp = Array.isArray(data) ? path + '[' + k + ']' : path + '.' + k;
+                                    collectPaths(v, cp);
+                                });
+                            }
+                        }
+                        if (state.data) collectPaths(state.data, '$');
+                        render(state.data, state.searchResults || []);
+                    },
+                    collapseAll() {
+                        expandedNodes.clear();
+                        const state = StateManager.getRawState();
+                        render(state.data, state.searchResults || []);
+                    },
+                };
+            })();
+
+            // ──────────────────────────────────────
+            // MODULE: TextEditor
+            // ──────────────────────────────────────
+            const TextEditor = (function() {
+                const textarea = document.getElementById('raw-textarea');
+                const syntaxCode = document.getElementById('syntax-code');
+                const syntaxOverlay = document.getElementById('syntax-overlay');
+                let isUserEditing = false;
+                let debounceTimer = null;
+
+                function escapeHTML(str) {
+                    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                }
+
+                function highlightJSON(text) {
+                    const escaped = escapeHTML(text);
+                    // Apply syntax highlighting with spans
+                    let result = '';
+                    let i = 0;
+                    const len = escaped.length;
+                    while (i < len) {
+                        // Strings (double quotes)
+                        if (escaped[i] === '"' && (i === 0 || escaped[i - 1] !== '\\')) {
+                            let j = i + 1;
+                            while (j < len && !(escaped[j] === '"' && escaped[j - 1] !== '\\')) j++;
+                            if (j < len) j++;
+                            result +=
+                                '<span class="text-green-600 dark:text-green-400">' + escaped.substring(i, j) +
+                                '</span>';
+                            i = j;
+                            continue;
+                        }
+                        // Numbers
+                        if (/[-\d]/.test(escaped[i]) && (i === 0 || /[\s,:\[]/.test(escaped[i - 1] || ' '))) {
+                            let j = i;
+                            while (j < len && /[\d.eE+\-]/.test(escaped[j])) j++;
+                            const numStr = escaped.substring(i, j);
+                            if (/^-?\d/.test(numStr) && numStr.length > 0 && !isNaN(parseFloat(numStr))) {
+                                result += '<span class="text-amber-600 dark:text-amber-400">' + numStr + '</span>';
+                                i = j;
+                                continue;
+                            }
+                        }
+                        // Booleans and null
+                        if (escaped.substring(i, i + 4) === 'true') {
+                            result += '<span class="text-purple-600 dark:text-purple-400">true</span>';
+                            i += 4;
+                            continue;
+                        }
+                        if (escaped.substring(i, i + 5) === 'false') {
+                            result += '<span class="text-purple-600 dark:text-purple-400">false</span>';
+                            i += 5;
+                            continue;
+                        }
+                        if (escaped.substring(i, i + 4) === 'null') {
+                            result += '<span class="text-gray-400 dark:text-gray-500 italic">null</span>';
+                            i += 4;
+                            continue;
+                        }
+                        // Keys (unquoted in tolerant mode - look for word followed by colon outside strings)
+                        // For now just handle regular chars
+                        result += escaped[i];
+                        i++;
+                    }
+                    return result;
+                }
+
+                function highlightWithErrorMark(text, errorLine) {
+                    let html = highlightJSON(text);
+                    if (errorLine > 0) {
+                        const lines = html.split('\n');
+                        if (errorLine <= lines.length) {
+                            lines[errorLine - 1] = '<span class="syntax-error-line block">' + lines[errorLine - 1] +
+                                '</span>';
+                        }
+                        html = lines.join('\n');
+                    }
+                    return html;
+                }
+
+                function updateOverlay(text, errorLine = -1) {
+                    if (!syntaxCode) return;
+                    syntaxCode.innerHTML = highlightWithErrorMark(text, errorLine);
+                }
+
+                function syncScroll() {
+                    if (syntaxOverlay && textarea) {
+                        syntaxOverlay.scrollTop = textarea.scrollTop;
+                        syntaxOverlay.scrollLeft = textarea.scrollLeft;
+                    }
+                }
+
+                textarea.addEventListener('scroll', syncScroll);
+                textarea.addEventListener('input', function() {
+                    isUserEditing = true;
+                    StateManager.getRawState().isUserEditing = true;
+                    updateOverlay(this.value);
+                    syncScroll();
+                    clearTimeout(debounceTimer);
+                    debounceTimer = setTimeout(() => {
+                        isUserEditing = false;
+                        StateManager.getRawState().isUserEditing = false;
+                        EventBus.emit('text:changed', { text: textarea.value, source: 'textarea' });
+                    }, 400);
+                });
+                textarea.addEventListener('blur', function() {
+                    if (isUserEditing) {
+                        isUserEditing = false;
+                        StateManager.getRawState().isUserEditing = false;
+                        clearTimeout(debounceTimer);
+                        EventBus.emit('text:changed', { text: this.value, source: 'blur' });
+                    }
+                });
+                textarea.addEventListener('focus', function() {
+                    isUserEditing = true;
+                    StateManager.getRawState().isUserEditing = true;
+                });
+
+                EventBus.on('stateChanged', function({ state, prev }) {
+                    if (!state.isUserEditing && state.rawText !== textarea.value) {
+                        textarea.value = state.rawText;
+                        updateOverlay(state.rawText, state.validation.errorLine);
+                        syncScroll();
+                    }
+                    if (state.validation && state.rawText === textarea.value) {
+                        updateOverlay(state.rawText, state.validation.errorLine);
+                    }
+                });
+
+                return {
+                    getValue() { return textarea ? textarea.value : ''; },
+                    setValue(text) {
+                        if (textarea) {
+                            textarea.value = text;
+                            updateOverlay(text);
+                            syncScroll();
+                        }
+                    },
+                    updateOverlay,
+                    syncScroll,
+                    focus() { if (textarea) textarea.focus(); },
+                };
+            })();
+
+            // ──────────────────────────────────────
+            // MODULE: PluginLoader
+            // ──────────────────────────────────────
+            const PluginLoader = (function() {
+                const mockOutput = document.getElementById('mock-server-output');
+                const scriptInput = document.getElementById('script-input');
+                const scriptOutput = document.getElementById('script-output');
+
+                return {
+                    generateMockEndpoint() {
+                        const state = StateManager.getRawState();
+                        if (!state.data) {
+                            if (mockOutput) mockOutput.textContent = 'No data available.';
+                            return;
+                        }
+                        const jsonStr = JSON.stringify(state.data);
+                        const base64 = btoa(unescape(encodeURIComponent(jsonStr)));
+                        const dataURL = 'data:application/json;base64,' + base64;
+                        const truncated = dataURL.length > 200 ? dataURL.substring(0, 200) + '...' : dataURL;
+                        if (mockOutput) {
+                            mockOutput.innerHTML =
+                                '<span class="text-green-600 dark:text-green-400">Mock endpoint (data URL):</span>\n<code class="break-all text-xxs">' +
+                                escapeHTML(truncated) + '</code>\n\n<span class="text-gray-500">Copy this URL and use it as a mock API endpoint.</span>';
+                        }
+                    },
+                    runScript() {
+                        if (!scriptInput || !scriptOutput) return;
+                        const state = StateManager.getRawState();
+                        if (!state.data) {
+                            scriptOutput.textContent = 'No data available.';
+                            return;
+                        }
+                        const code = scriptInput.value.trim();
+                        if (!code) {
+                            scriptOutput.textContent = 'Enter a JavaScript function body.';
+                            return;
+                        }
+                        try {
+                            const fn = new Function('data', code);
+                            const result = fn(JSON.parse(JSON.stringify(state.data)));
+                            scriptOutput.textContent = 'Success! Output:\n' + JSON.stringify(result, null, 2);
+                            // Optionally update state
+                            if (result !== undefined && result !== null) {
+                                EventBus.emit('plugin:jsonUpdated', { data: result });
+                            }
+                        } catch (e) {
+                            scriptOutput.textContent = 'Error: ' + e.message;
+                            scriptOutput.classList.add('text-red-500');
+                            setTimeout(() => scriptOutput.classList.remove('text-red-500'), 2000);
+                        }
+                    },
+                    escapeHTML,
+                };
+
+                function escapeHTML(str) {
+                    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                }
+            })();
+
+            // ──────────────────────────────────────
+            // MODULE: AppController
+            // ──────────────────────────────────────
+            const AppController = (function() {
+                // Cache DOM refs
+                const els = {
+                    appContainer: document.getElementById('app-container'),
+                    html: document.documentElement,
+                    searchPanel: document.getElementById('search-panel'),
+                    searchInput: document.getElementById('search-input'),
+                    searchJsonPath: document.getElementById('search-jsonpath'),
+                    searchCount: document.getElementById('search-count'),
+                    settingsDrawer: document.getElementById('settings-drawer'),
+                    settingsBackdrop: document.getElementById('settings-backdrop'),
+                    toolsDrawer: document.getElementById('tools-drawer'),
+                    toolsBackdrop: document.getElementById('tools-backdrop'),
+                    helpModal: document.getElementById('help-modal'),
+                    urlImportModal: document.getElementById('url-import-modal'),
+                    urlImportInput: document.getElementById('url-import-input'),
+                    urlImportError: document.getElementById('url-import-error'),
+                    nodeEditorPanel: document.getElementById('node-editor-panel'),
+                    nodeEditorTextarea: document.getElementById('node-editor-textarea'),
+                    arrayTableModal: document.getElementById('array-table-modal'),
+                    arrayTable: document.getElementById('array-table'),
+                    statusIcon: document.getElementById('status-icon'),
+                    statusText: document.getElementById('status-text'),
+                    statusSize: document.getElementById('status-size'),
+                    darkToggleKnob: document.getElementById('dark-toggle-knob'),
+                    textPane: document.getElementById('text-pane'),
+                    treePane: document.getElementById('tree-pane'),
+                    btnMobileTree: document.getElementById('btn-mobile-tree'),
+                    btnMobileText: document.getElementById('btn-mobile-text'),
+                };
+
+                let currentNodeEditPath = null;
+
+                function init() {
+                    // Load dark mode preference
+                    const savedDark = localStorage.getItem('powerjson-dark');
+                    const isDark = savedDark === null ? true : savedDark === 'true';
+                    if (!isDark) {
+                        els.html.classList.remove('dark');
+                        if (els.darkToggleKnob) els.darkToggleKnob.classList.remove('translate-x-6');
+                    } else {
+                        els.html.classList.add('dark');
+                        if (els.darkToggleKnob) els.darkToggleKnob.classList.add('translate-x-6');
+                    }
+                    StateManager.updateState({ darkMode: isDark });
+
+                    // Load default data
+                    loadDefaultData();
+
+                    // Wire buttons
+                    wireButtons();
+                    // Wire keyboard shortcuts
+                    wireKeyboard();
+                    // Wire event bus listeners
+                    wireEventBus();
+                    // Mobile pane switching
+                    updateMobilePanes();
+                    window.addEventListener('resize', updateMobilePanes);
+                }
+
+                function loadDefaultData() {
+                    const defaultData = {
+                        "powerJSON": {
+                            "version": "1.0.0",
+                            "description": "A powerful mobile-first JSON editor",
+                            "features": ["tree-view", "syntax-highlighting", "json5-support", "search",
+                                "plugins"
+                            ],
+                            "config": {
+                                "darkMode": true,
+                                "indentSize": 2,
+                                "autoValidate": true,
+                                "maxUndoSteps": 100
+                            },
+                            "sampleData": {
+                                "name": "Example Project",
+                                "active": true,
+                                "count": 42,
+                                "tags": ["json", "editor", "mobile"],
+                                "metadata": null,
+                                "nested": {
+                                    "deep": {
+                                        "value": "You can edit this!",
+                                        "numbers": [1, 2, 3, 4, 5]
+                                    }
+                                }
+                            },
+                            "longString": "This is a longer string value that demonstrates how the editor handles text wrapping and display for extended content in the tree view and text editor panes."
+                        }
+                    };
+                    const rawText = JSON.stringify(defaultData);
+                    const parseResult = DataManager.parse(rawText);
+                    StateManager.updateState({
+                        data: parseResult.data || defaultData,
+                        rawText: rawText,
+                        validation: { valid: true, error: null, errorLine: -1 },
+                    });
+                    StateManager.pushUndoSnapshot();
+                }
+
+                function wireButtons() {
+                    // Header buttons
+                    document.getElementById('btn-import-file').addEventListener('click', () => FileManager
+                    .triggerFileInput());
+                    document.getElementById('btn-import-url').addEventListener('click', () => {
+                        els.urlImportModal.classList.remove('hidden');
+                        els.urlImportInput.focus();
+                    });
+                    document.getElementById('btn-paste').addEventListener('click', async () => {
+                        try {
+                            const text = await ClipboardManager.readText();
+                            EventBus.emit('file:loaded', { text, filename: 'clipboard' });
+                        } catch (e) {
+                            showStatus('Clipboard access denied', 'error');
+                        }
+                    });
+                    document.getElementById('btn-copy').addEventListener('click', async () => {
+                        const state = StateManager.getRawState();
+                        try {
+                            await ClipboardManager.writeText(state.rawText || '');
+                            showStatus('Copied to clipboard', 'success');
+                        } catch (e) {
+                            showStatus('Copy failed', 'error');
+                        }
+                    });
+                    document.getElementById('btn-download').addEventListener('click', () => {
+                        const state = StateManager.getRawState();
+                        FileManager.downloadJSON(state.rawText || '{}', 'power-json-export.json');
+                    });
+                    document.getElementById('btn-settings').addEventListener('click', openSettings);
+                    document.getElementById('btn-help').addEventListener('click', () => els.helpModal.classList
+                        .remove('hidden'));
+
+                    // Toolbar
+                    document.getElementById('btn-beautify').addEventListener('click', beautifyJSON);
+                    document.getElementById('btn-compact').addEventListener('click', compactJSON);
+                    document.getElementById('btn-search-toggle').addEventListener('click', toggleSearch);
+                    document.getElementById('btn-undo').addEventListener('click', () => StateManager.undo());
+                    document.getElementById('btn-redo').addEventListener('click', () => StateManager.redo());
+                    document.getElementById('btn-tools-toggle').addEventListener('click', openTools);
+                    document.getElementById('btn-wrap-object').addEventListener('click', () => wrapSelected(
+                        'object'));
+                    document.getElementById('btn-wrap-array').addEventListener('click', () => wrapSelected(
+                    'array'));
+                    document.getElementById('select-type-cast').addEventListener('change', function() {
+                        if (this.value) castSelectedType(this.value);
+                        this.value = '';
+                    });
+
+                    // Mobile pane buttons
+                    document.getElementById('btn-mobile-tree').addEventListener('click', () => showMobilePane(
+                        'tree'));
+                    document.getElementById('btn-mobile-text').addEventListener('click', () => showMobilePane(
+                        'text'));
+
+                    // Search
+                    document.getElementById('btn-search-clear').addEventListener('click', clearSearch);
+                    els.searchInput.addEventListener('input', debounce(performSearch, 250));
+                    els.searchJsonPath.addEventListener('change', performSearch);
+
+                    // Settings
+                    document.getElementById('btn-settings-close').addEventListener('click', closeSettings);
+                    els.settingsBackdrop.addEventListener('click', closeSettings);
+                    document.getElementById('btn-dark-toggle').addEventListener('click', toggleDarkMode);
+
+                    // Tools
+                    document.getElementById('btn-tools-close').addEventListener('click', closeTools);
+                    els.toolsBackdrop.addEventListener('click', closeTools);
+                    document.getElementById('btn-mock-generate').addEventListener('click', () => PluginLoader
+                        .generateMockEndpoint());
+                    document.getElementById('btn-script-run').addEventListener('click', () => PluginLoader
+                        .runScript());
+
+                    // Help
+                    document.getElementById('btn-help-close').addEventListener('click', () => els.helpModal.classList
+                        .add('hidden'));
+                    els.helpModal.addEventListener('click', function(e) {
+                        if (e.target === els.helpModal) els.helpModal.classList.add('hidden');
+                    });
+
+                    // URL Import
+                    document.getElementById('btn-url-cancel').addEventListener('click', () => els.urlImportModal
+                        .classList.add('hidden'));
+                    document.getElementById('btn-url-fetch').addEventListener('click', fetchURL);
+                    els.urlImportModal.addEventListener('click', function(e) {
+                        if (e.target === els.urlImportModal) els.urlImportModal.classList.add('hidden');
+                    });
+
+                    // Node Editor
+                    document.getElementById('btn-node-editor-close').addEventListener('click', closeNodeEditor);
+                    document.getElementById('btn-node-editor-cancel').addEventListener('click', closeNodeEditor);
+                    document.getElementById('btn-node-editor-save').addEventListener('click', saveNodeEdit);
+
+                    // Array Table
+                    document.getElementById('btn-array-table-close').addEventListener('click', () => els
+                        .arrayTableModal.classList.add('hidden'));
+                    document.getElementById('btn-array-table-save').addEventListener('click', saveArrayTable);
+                    els.arrayTableModal.addEventListener('click', function(e) {
+                        if (e.target === els.arrayTableModal) els.arrayTableModal.classList.add('hidden');
+                    });
+                }
+
+                function wireKeyboard() {
+                    document.addEventListener('keydown', function(e) {
+                        if (e.key === '?' && !e.ctrlKey && !e.metaKey && !e.altKey && document.activeElement ===
+                            document.body) {
+                            e.preventDefault();
+                            els.helpModal.classList.remove('hidden');
+                        }
+                        if (e.key === 'Escape') {
+                            closeAll();
+                        }
+                        if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+                            e.preventDefault();
+                            if (e.shiftKey) compactJSON();
+                            else beautifyJSON();
+                        }
+                        if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                            e.preventDefault();
+                            toggleSearch();
+                        }
+                        if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+                            e.preventDefault();
+                            StateManager.undo();
+                        }
+                        if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+                            e.preventDefault();
+                            StateManager.redo();
+                        }
+                        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                            e.preventDefault();
+                            const state = StateManager.getRawState();
+                            FileManager.downloadJSON(state.rawText || '{}', 'power-json-export.json');
+                        }
+                    });
+                }
+
+                function wireEventBus() {
+                    EventBus.on('file:loaded', function({ text, filename }) {
+                        const result = DataManager.parse(text);
+                        if (result.data) {
+                            const formatted = DataManager.stringify(result.data, 2);
+                            StateManager.updateState({
+                                data: result.data,
+                                rawText: formatted,
+                                validation: { valid: true, error: null, errorLine: -1 },
+                            }, { pushUndo: true });
+                            showStatus('Loaded: ' + (filename || 'data'), 'success');
+                        } else {
+                            StateManager.updateState({
+                                data: null,
+                                rawText: text,
+                                validation: { valid: false, error: result.error, errorLine: result.errorLine },
+                            });
+                            showStatus('Invalid JSON: ' + result.error, 'error');
+                        }
+                    });
+
+                    EventBus.on('text:changed', function({ text }) {
+                        const result = DataManager.parse(text);
+                        if (result.data) {
+                            StateManager.updateState({
+                                data: result.data,
+                                rawText: text,
+                                validation: { valid: true, error: null, errorLine: -1 },
+                            }, { pushUndo: true });
+                        } else {
+                            StateManager.updateState({
+                                validation: { valid: false, error: result.error, errorLine: result.errorLine },
+                                rawText: text,
+                            });
+                        }
+                    });
+
+                    EventBus.on('data:updated', function({ data }) {
+                        const formatted = DataManager.stringify(data, 2);
+                        StateManager.updateState({
+                            data: data,
+                            rawText: formatted,
+                            validation: { valid: true, error: null, errorLine: -1 },
+                        });
+                    });
+
+                    EventBus.on('node:edit-requested', function({ path, value }) {
+                        openNodeEditor(path, value);
+                    });
+
+                    EventBus.on('plugin:jsonUpdated', function({ data }) {
+                        const formatted = DataManager.stringify(data, 2);
+                        StateManager.updateState({
+                            data: data,
+                            rawText: formatted,
+                            validation: { valid: true, error: null, errorLine: -1 },
+                        }, { pushUndo: true });
+                        showStatus('Plugin applied changes', 'success');
+                    });
+
+                    EventBus.on('error', function({ message }) {
+                        showStatus(message, 'error');
+                    });
+
+                    // Update status bar on state change
+                    StateManager.subscribe(function(state) {
+                        updateStatusBar(state);
+                    });
+                }
+
+                function updateStatusBar(state) {
+                    if (state.validation.valid && state.data) {
+                        els.statusIcon.innerHTML =
+                            '<i class="fa-solid fa-circle-check text-green-600 dark:text-green-400 text-[10px]"></i>';
+                        els.statusText.textContent = 'Valid JSON';
+                        els.statusSize.textContent = DataManager.getSize(state.data);
+                    } else if (!state.validation.valid) {
+                        els.statusIcon.innerHTML =
+                            '<i class="fa-solid fa-circle-exclamation text-red-500 text-[10px]"></i>';
+                        els.statusText.textContent = state.validation.error || 'Invalid JSON';
+                        els.statusSize.textContent = state.rawText ? new Blob([state.rawText]).size + ' B' : '0 B';
+                    } else {
+                        els.statusIcon.innerHTML =
+                            '<i class="fa-solid fa-circle text-gray-400 text-[10px]"></i>';
+                        els.statusText.textContent = 'No data';
+                        els.statusSize.textContent = '0 B';
+                    }
+                }
+
+                function showStatus(msg, type) {
+                    els.statusText.textContent = msg;
+                    if (type === 'error') {
+                        els.statusIcon.innerHTML =
+                            '<i class="fa-solid fa-circle-exclamation text-red-500 text-[10px]"></i>';
+                    } else if (type === 'success') {
+                        els.statusIcon.innerHTML =
+                            '<i class="fa-solid fa-circle-check text-green-500 text-[10px]"></i>';
+                    }
+                }
+
+                function beautifyJSON() {
+                    const state = StateManager.getRawState();
+                    if (state.data) {
+                        const formatted = DataManager.stringify(state.data, 2);
+                        StateManager.updateState({ rawText: formatted }, { pushUndo: true });
+                        TextEditor.setValue(formatted);
+                    } else if (state.rawText) {
+                        const result = DataManager.parse(state.rawText);
+                        if (result.data) {
+                            const formatted = DataManager.stringify(result.data, 2);
+                            StateManager.updateState({ data: result.data, rawText: formatted, validation: { valid: true,
+                                    error: null, errorLine: -1 } }, { pushUndo: true });
+                        }
+                    }
+                }
+
+                function compactJSON() {
+                    const state = StateManager.getRawState();
+                    if (state.data) {
+                        const compact = DataManager.stringify(state.data, 'compact');
+                        StateManager.updateState({ rawText: compact }, { pushUndo: true });
+                        TextEditor.setValue(compact);
+                    } else if (state.rawText) {
+                        const result = DataManager.parse(state.rawText);
+                        if (result.data) {
+                            const compact = DataManager.stringify(result.data, 'compact');
+                            StateManager.updateState({ data: result.data, rawText: compact, validation: { valid: true,
+                                    error: null, errorLine: -1 } }, { pushUndo: true });
+                        }
+                    }
+                }
+
+                function toggleSearch() {
+                    const panel = els.searchPanel;
+                    if (panel.classList.contains('hidden')) {
+                        panel.classList.remove('hidden');
+                        els.searchInput.focus();
+                    } else {
+                        panel.classList.add('hidden');
+                        clearSearch();
+                    }
+                }
+
+                function performSearch() {
+                    const query = els.searchInput.value.trim();
+                    const useJSONPath = els.searchJsonPath.checked;
+                    const state = StateManager.getRawState();
+                    if (!query || !state.data) {
+                        StateManager.updateState({ searchResults: [] });
+                        EventBus.emit('search:cleared');
+                        els.searchCount.textContent = '';
+                        return;
+                    }
+                    const results = SearchEngine.search(state.data, query, useJSONPath);
+                    StateManager.updateState({ searchResults: results });
+                    EventBus.emit('search:results', { results, query });
+                    els.searchCount.textContent = results.length + ' match' + (results.length !== 1 ? 'es' : '');
+                }
+
+                function clearSearch() {
+                    els.searchInput.value = '';
+                    els.searchCount.textContent = '';
+                    StateManager.updateState({ searchResults: [] });
+                    EventBus.emit('search:cleared');
+                }
+
+                function openSettings() {
+                    els.settingsDrawer.classList.remove('translate-x-full');
+                    els.settingsBackdrop.classList.remove('hidden');
+                }
+
+                function closeSettings() {
+                    els.settingsDrawer.classList.add('translate-x-full');
+                    els.settingsBackdrop.classList.add('hidden');
+                }
+
+                function openTools() {
+                    els.toolsDrawer.classList.remove('translate-x-full');
+                    els.toolsBackdrop.classList.remove('hidden');
+                }
+
+                function closeTools() {
+                    els.toolsDrawer.classList.add('translate-x-full');
+                    els.toolsBackdrop.classList.add('hidden');
+                }
+
+                function closeAll() {
+                    closeSettings();
+                    closeTools();
+                    closeNodeEditor();
+                    els.helpModal.classList.add('hidden');
+                    els.urlImportModal.classList.add('hidden');
+                    els.arrayTableModal.classList.add('hidden');
+                    if (!els.searchPanel.classList.contains('hidden') && !els.searchInput.value) {
+                        els.searchPanel.classList.add('hidden');
+                    }
+                }
+
+                function toggleDarkMode() {
+                    const isDark = els.html.classList.contains('dark');
+                    if (isDark) {
+                        els.html.classList.remove('dark');
+                        if (els.darkToggleKnob) els.darkToggleKnob.classList.remove('translate-x-6');
+                        localStorage.setItem('powerjson-dark', 'false');
+                        StateManager.updateState({ darkMode: false });
+                    } else {
+                        els.html.classList.add('dark');
+                        if (els.darkToggleKnob) els.darkToggleKnob.classList.add('translate-x-6');
+                        localStorage.setItem('powerjson-dark', 'true');
+                        StateManager.updateState({ darkMode: true });
+                    }
+                    // Re-render
+                    const state = StateManager.getRawState();
+                    TreeRenderer.render(state.data, state.searchResults || []);
+                    TextEditor.updateOverlay(state.rawText, state.validation.errorLine);
+                }
+
+                function openNodeEditor(path, value) {
+                    currentNodeEditPath = path;
+                    const displayValue = typeof value === 'string' ? '"' + value + '"' : JSON.stringify(value);
+                    els.nodeEditorTextarea.value = displayValue;
+                    els.nodeEditorPanel.classList.remove('translate-y-full');
+                }
+
+                function closeNodeEditor() {
+                    els.nodeEditorPanel.classList.add('translate-y-full');
+                    currentNodeEditPath = null;
+                }
+
+                function saveNodeEdit() {
+                    if (!currentNodeEditPath) return;
+                    const rawValue = els.nodeEditorTextarea.value.trim();
+                    TreeRenderer.updateNodeValue(currentNodeEditPath, rawValue);
+                    closeNodeEditor();
+                }
+
+                function wrapSelected(type) {
+                    const state = StateManager.getRawState();
+                    const path = TreeRenderer.getSelectedPath();
+                    if (!path || !state.data) return;
+                    const value = TreeRenderer.getValueAtPath(state.data, path);
+                    const wrapper = type === 'object' ? { "wrapped": value } : [value];
+                    const newData = setValueAtPathDeep(state.data, path, wrapper);
+                    if (newData !== state.data) {
+                        const formatted = DataManager.stringify(newData, 2);
+                        StateManager.updateState({ data: newData, rawText: formatted, validation: { valid: true,
+                                error: null, errorLine: -1 } }, { pushUndo: true });
+                        EventBus.emit('data:updated', { data: newData });
+                    }
+                }
+
+                function castSelectedType(targetType) {
+                    const state = StateManager.getRawState();
+                    const path = TreeRenderer.getSelectedPath();
+                    if (!path || !state.data || path === '$') return;
+                    let newValue;
+                    switch (targetType) {
+                        case 'string':
+                            newValue = String(TreeRenderer.getValueAtPath(state.data, path) ?? '');
+                            break;
+                        case 'number':
+                            newValue = parseFloat(TreeRenderer.getValueAtPath(state.data, path)) || 0;
+                            break;
+                        case 'boolean':
+                            newValue = Boolean(TreeRenderer.getValueAtPath(state.data, path));
+                            break;
+                        case 'null':
+                            newValue = null;
+                            break;
+                        case 'object':
+                            newValue = {};
+                            break;
+                        case 'array':
+                            newValue = [];
+                            break;
+                        default:
+                            return;
+                    }
+                    TreeRenderer.updateNodeValue(path, JSON.stringify(newValue));
+                }
+
+                function setValueAtPathDeep(data, path, newValue) {
+                    if (path === '$') return newValue;
+                    const parts = parsePathDeep(path);
+                    const cloned = JSON.parse(JSON.stringify(data));
+                    let current = cloned;
+                    for (let i = 0; i < parts.length - 1; i++) {
+                        const part = parts[i];
+                        if (typeof part === 'number') {
+                            if (!Array.isArray(current)) return data;
+                            current = current[part];
+                        } else {
+                            if (typeof current !== 'object' || current === null) return data;
+                            current = current[part];
+                        }
+                    }
+                    const lastPart = parts[parts.length - 1];
+                    if (typeof lastPart === 'number') {
+                        if (Array.isArray(current)) current[lastPart] = newValue;
+                    } else {
+                        if (typeof current === 'object' && current !== null) current[lastPart] = newValue;
+                    }
+                    return cloned;
+                }
+
+                function parsePathDeep(path) {
+                    if (path === '$') return [];
+                    const stripped = path.replace(/^\$\.?/, '');
+                    const parts = [];
+                    let current = '';
+                    let inBracket = false;
+                    for (let i = 0; i < stripped.length; i++) {
+                        const ch = stripped[i];
+                        if (ch === '[' && !inBracket) {
+                            if (current) parts.push(current);
+                            current = '';
+                            inBracket = true;
+                        } else if (ch === ']' && inBracket) {
+                            parts.push(parseInt(current) || current);
+                            current = '';
+                            inBracket = false;
+                        } else if (ch === '.' && !inBracket) {
+                            if (current) parts.push(current);
+                            current = '';
+                        } else {
+                            current += ch;
+                        }
+                    }
+                    if (current) parts.push(current);
+                    return parts.map(p => {
+                        const num = parseInt(p);
+                        return isNaN(num) ? p : num;
+                    });
+                }
+
+                async function fetchURL() {
+                    const url = els.urlImportInput.value.trim();
+                    if (!url) return;
+                    els.urlImportError.classList.add('hidden');
+                    try {
+                        const response = await fetch(url, { mode: 'cors' });
+                        if (!response.ok) throw new Error('HTTP ' + response.status);
+                        const text = await response.text();
+                        els.urlImportModal.classList.add('hidden');
+                        EventBus.emit('file:loaded', { text, filename: url.split('/').pop() || 'fetched.json' });
+                    } catch (e) {
+                        els.urlImportError.textContent = 'Error: ' + e.message;
+                        els.urlImportError.classList.remove('hidden');
+                    }
+                }
+
+                function saveArrayTable() {
+                    // Read table and update state
+                    const table = els.arrayTable;
+                    if (!table) return;
+                    const rows = table.querySelectorAll('tbody tr');
+                    const headers = [];
+                    table.querySelectorAll('thead th').forEach(th => headers.push(th.textContent));
+                    const newArray = [];
+                    rows.forEach(row => {
+                        const obj = {};
+                        row.querySelectorAll('td').forEach((td, i) => {
+                            const val = td.textContent.trim();
+                            if (headers[i]) {
+                                try {
+                                    obj[headers[i]] = JSON.parse(val);
+                                } catch (e) {
+                                    obj[headers[i]] = val;
+                                }
+                            }
+                        });
+                        newArray.push(obj);
+                    });
+                    const formatted = DataManager.stringify(newArray, 2);
+                    StateManager.updateState({ data: newArray, rawText: formatted, validation: { valid: true,
+                            error: null, errorLine: -1 } }, { pushUndo: true });
+                    els.arrayTableModal.classList.add('hidden');
+                    EventBus.emit('data:updated', { data: newArray });
+                    showStatus('Array table changes applied', 'success');
+                }
+
+                function showMobilePane(pane) {
+                    const isMobile = window.innerWidth < 768;
+                    if (!isMobile) return;
+                    if (pane === 'tree') {
+                        els.treePane.classList.remove('hidden-pane');
+                        els.textPane.classList.add('hidden-pane');
+                        els.btnMobileTree.classList.add('bg-blue-100', 'dark:bg-blue-900', 'border-blue-300',
+                            'dark:border-blue-700');
+                        els.btnMobileTree.classList.remove('bg-white', 'dark:bg-gray-700', 'border-gray-300',
+                            'dark:border-gray-600');
+                        els.btnMobileText.classList.remove('bg-blue-100', 'dark:bg-blue-900', 'border-blue-300',
+                            'dark:border-blue-700');
+                        els.btnMobileText.classList.add('bg-white', 'dark:bg-gray-700', 'border-gray-300',
+                            'dark:border-gray-600');
+                    } else {
+                        els.textPane.classList.remove('hidden-pane');
+                        els.treePane.classList.add('hidden-pane');
+                        els.btnMobileText.classList.add('bg-blue-100', 'dark:bg-blue-900', 'border-blue-300',
+                            'dark:border-blue-700');
+                        els.btnMobileText.classList.remove('bg-white', 'dark:bg-gray-700', 'border-gray-300',
+                            'dark:border-gray-600');
+                        els.btnMobileTree.classList.remove('bg-blue-100', 'dark:bg-blue-900', 'border-blue-300',
+                            'dark:border-blue-700');
+                        els.btnMobileTree.classList.add('bg-white', 'dark:bg-gray-700', 'border-gray-300',
+                            'dark:border-gray-600');
+                    }
+                }
+
+                function updateMobilePanes() {
+                    const isMobile = window.innerWidth < 768;
+                    if (isMobile) {
+                        els.treePane.classList.add('hidden-pane');
+                        els.textPane.classList.remove('hidden-pane');
+                        els.btnMobileText.classList.add('bg-blue-100', 'dark:bg-blue-900', 'border-blue-300',
+                            'dark:border-blue-700');
+                        els.btnMobileText.classList.remove('bg-white', 'dark:bg-gray-700', 'border-gray-300',
+                            'dark:border-gray-600');
+                        els.btnMobileTree.classList.remove('bg-blue-100', 'dark:bg-blue-900', 'border-blue-300',
+                            'dark:border-blue-700');
+                        els.btnMobileTree.classList.add('bg-white', 'dark:bg-gray-700', 'border-gray-300',
+                            'dark:border-gray-600');
+                    } else {
+                        els.treePane.classList.remove('hidden-pane');
+                        els.textPane.classList.remove('hidden-pane');
+                    }
+                }
+
+                function debounce(fn, delay) {
+                    let timer;
+                    return function(...args) {
+                        clearTimeout(timer);
+                        timer = setTimeout(() => fn.apply(this, args), delay);
+                    };
+                }
+
+                // Initial render
+                init();
+                const initialState = StateManager.getRawState();
+                TreeRenderer.render(initialState.data, []);
+                TextEditor.setValue(initialState.rawText);
+                updateStatusBar(initialState);
+
+                return { init, showStatus };
+            })();
+
+            // ──────────────────────────────────────
+            // Export nothing to global scope
+            // All modules are self-contained within the IIFE
+            console.log('Power JSON Editor initialized. Press ? for help.');
+        })();
+    </script>
+</body>
+</html>
