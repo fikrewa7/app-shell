@@ -49,9 +49,9 @@ pointer-events: none;
       <button class="text-white/80 hover:text-white transition-colors px-1 py-0.5 hidden">
         <i class="fa-solid fa-bell text-[10px]"></i>
       </button>
-      <button id="switchApp" class="bg-cyan-800/50 hover:bg-cyan-700 text-white px-1.5 py-0.5 rounded border border-cyan-600/30 transition-colors text-[12px]" data-app="video">
-        <i id="switchAppIcon" class="fa-solid fa-video text-[10px]"></i>
-        <span id="switchAppLabel">Video</span>
+      <button id="switchApps" class="bg-cyan-800/50 hover:bg-cyan-700 text-white px-1.5 py-0.5 rounded border border-cyan-600/30 transition-colors text-[12px] hidden" data-app="video">
+        <i id="switchAppIcons" class="fa-solid fa-video text-[10px]"></i>
+        <span id="switchAppLabels">Video</span>
         </button>
     </div>
   </header>
@@ -85,25 +85,32 @@ pointer-events: none;
 </button>
 </aside>
 
-    <section id="app-content" class="flex-1 overflow-hidden flex flex-col p-2 gap-1 relative bg-transparent min-h-0">
+<section id="app-content" class="flex-1 overflow-hidden flex flex-col p-2 gap-1 relative bg-transparent min-h-0">
 
-<div id="content-header" class="flex-shrink-0 flex items-center justify-between border-b border-white/5 px-2 mb-0.5">
-  <div>
+<div id="content-header" class="flex-shrink-0 flex items-center justify-between border-b border-white/5 px-2 mb-0.5 gap-4">
+  <div class="flex-1">
     <h1 id="page-title" class="text-xs font-bold tracking-tight text-white drop-shadow-[0_1px_4px_rgba(1,74,96,0.8)]">Gallery</h1>
     <p id="content-desc" class="hidden text-cyan-100/70 text-[8px] mt-0.5 drop-shadow">Browse your video collection</p>
   </div>
-  <button id="refresh-btn" class="bg-white/10 backdrop-blur-md hover:bg-white/20 text-white px-2 py-1 rounded border border-white/20 transition-colors flex items-center gap-1 shadow-md"> <i class="fa-solid fa-rotate text-[8px]"></i> <span class="hidden sm:inline text-[9px]">Refresh</span> </button>
-  <button id="folder-up-btn" class="hidden bg-cyan-800/50 hover:bg-cyan-700 text-white px-1 py-0 rounded text-[8px] transition-colors disabled:opacity-30 disabled:cursor-not-allowed ml-1" title="Parent folder"> <i class="fa-solid fa-arrow-up"></i> </button>
+  <button id="refresh-btn" class="bg-white/10 backdrop-blur-md hover:bg-white/20 text-white px-2 py-1 rounded border border-white/20 transition-colors flex items-center gap-1 shadow-md"> <i class="fa-solid fa-rotate text-[10px]"></i> <span class="hidden sm:inline text-[9px]">Refresh</span> </button>
+ 
+ <button id="switchApp" class="bg-cyan-800/50 hover:bg-cyan-700 text-white px-1.5 py-0.5 rounded border border-cyan-600/30 transition-colors text-[12px]" data-app="video">
+<i id="switchAppIcon" class="fa-solid fa-video text-[10px]"></i>
+<span id="switchAppLabel" class="hidden">Video</span>
+</button>
+
+ <button id="folder-up-btn" class="hidden bg-cyan-800/50 hover:bg-cyan-700 text-white px-1 py-0 rounded text-[8px] transition-colors disabled:opacity-30 disabled:cursor-not-allowed ml-1" title="Parent folder"> <i class="fa-solid fa-arrow-up"></i> </button>
 </div>
 
-<div class="bg-[#1a2e36] rounded-lg p-0.5 w-full mb-1 text-[9px] shadow-xl border border-cyan-400/30 overflow-hidden text-cyan-300 flex items-center gap-2 border-b border-white/10 flex-nowrap">
-<div id="dropdown-row" class="h-full min-h-[20px] flex-1 flex items-center gap-1 overflow-hidden"></div>
-</div>
 
 <div id="tab-container" class="flex-1 overflow-hidden min-h-0 relative">
 <div class="bg-[#1a2e36] rounded-lg p-2 w-full h-full shadow-xl border border-cyan-400/30 overflow-hidden flex flex-col">
 
 <div id="tab-pane-gallery" class="h-full min-h-0 overflow-hidden flex flex-col">
+
+<div class="bg-[#1a2e36] rounded-lg p-0.5 w-full mb-1 text-[9px] shadow-xl border border-cyan-400/30 overflow-hidden text-cyan-300 flex items-center gap-2 border-b border-white/10 flex-nowrap">
+<div id="dropdown-row" class="h-full min-h-[20px] flex-1 flex items-center gap-1 overflow-hidden"></div>
+</div>
 
 <div id="id-summary-container" class="flex-shrink-0 mb-1 text-[9px] text-cyan-300 flex items-center gap-2 border-b border-white/10 pb-0.5 flex-wrap">
 <span><i class="fa-solid fa-video text-cyan-300 mr-1"></i> Total: <span id="summary-total-count" class="text-white font-semibold">0</span></span>
@@ -117,6 +124,7 @@ pointer-events: none;
 <span>Click refresh button to load …</span>
 </div>
 </div>
+
 </div>
 
 <div id="tab-pane-upload" class="h-full hidden overflow-hidden">
@@ -208,14 +216,19 @@ pointer-events: none;
 <td class="py-1 px-1 text-right text-green-400"><i id="current-db-icon" class="fa-solid fa-photo-video text-green-400 mr-1"></i><span>Active</span></td>
 </tr>
 </tbody>
-                </table>
+</table>
 <div class="mt-2 flex gap-2">
 <button id="test-connection-btn" class="bg-cyan-800/50 hover:bg-cyan-700 text-white px-2 py-0.5 rounded text-[9px] border border-cyan-600/30 transition-colors"><i class="fa-solid fa-link mr-1"></i> Test Connection</button>
-                  <span id="test-result" class="text-[9px] text-cyan-300 self-center"></span>
-                </div>
-              </div>
+<span id="test-result" class="flex-1 text-[9px] text-cyan-300 self-center"></span>
+
+<button id="downloadList" class="bg-cyan-800/50 hover:bg-cyan-700 text-white px-1.5 py-0.5 rounded border border-cyan-600/30 transition-colors text-[12px]">
+<i class="fa-solid fa-download text-[10px]"></i>
+<span>Download JSON</span>
+</button>
 </div>
-          </div>
+</div>
+</div>
+</div>
 
 <div id="tab-pane-help" class="h-full hidden overflow-hidden"></div>
 
