@@ -1094,7 +1094,7 @@ function _sortByLastModified(blobs, order = 'desc') {
             
             const a = document.createElement('a');
             a.href = url;
-            a.download = `data.${storeId}.json`; // e.g. data.12345.json
+            a.download = `${storeId}.json`; // e.g. data.12345.json
             document.body.appendChild(a);
             a.click();
             a.remove();
